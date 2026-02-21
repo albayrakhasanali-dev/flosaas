@@ -1,0 +1,122 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ==========================================
+// REFERANS (LOOKUP) TABLOLARI
+// ==========================================
+
+model T_Sirket {
+  id         Int            @id @default(autoincrement())
+  sirketAdi  String         @unique @map("sirket_adi")
+  createdAt  DateTime       @default(now()) @map("created_at")
+  araclar    T_Arac_Master[]
+  kullanicilar User[]
+
+  @@map("t_sirket")
+}
+
+model T_Lokasyon {
+  id            Int            @id @default(autoincrement())
+  lokasyonAdi   String         @unique @map("lokasyon_adi")
+  sorumluEmail  String?        @map("sorumlu_email")
+  createdAt     DateTime       @default(now()) @map("created_at")
+  araclar       T_Arac_Master[]
+  kullanicilar  User[]
+
+  @@map("t_lokasyon")
+}
+
+model T_Durum {
+  id        Int            @id @default(autoincrement())
+  durumAdi  String         @unique @map("durum_adi")
+  createdAt DateTime       @default(now()) @map("created_at")
+  araclar   T_Arac_Master[]
+
+  @@map("t_durum")
+}
+
+// ==========================================
+// ANA VERİ TABLOSU
+// ==========================================
+
+model T_Arac_Master {
+  id                    Int       @id @default(autoincrement())
+  plaka                 String    @unique
+  durumId               Int?      @map("durum_id")
+  durum                 T_Durum?  @relation(fields: [durumId], references: [id])
+  sirketId              Int?      @map("sirket_id")
+  sirket                T_Sirket? @relation(fields: [sirketId], references: [id])
+  lokasyonId            Int?      @map("lokasyon_id")
+  lokasyon              T_Lokasyon? @relation(fields: [lokasyonId], references: [id])
+  mulkiyetTipi          String?   @map("mulkiyet_tipi") // Özmal, Kiralık
+  markaModelTicariAdi   String?   @map("marka_model_ticari_adi")
+  kullanimSekli         String?   @map("kullanim_sekli")
+  modelYili             Int?      @map("model_yili")
+  kapasite              String?
+  aracMarka             String?   @map("arac_marka")
+  kasaMarka             String?   @map("kasa_marka")
+  sasiNo                String?   @map("sasi_no")
+  motorNo               String?   @map("motor_no")
+  guncelKmSaat          Float?    @map("guncel_km_saat")
+  zimmetMasrafMerkezi   String?   @map("zimmet_masraf_merkezi")
+  uttsDurum             String?   @map("utts_durum") // Takılı, Eksik, Bilinmiyor
+  seyirTakipCihazNo     String?   @map("seyir_takip_cihaz_no")
+  hgsEtiketNo           String?   @map("hgs_etiket_no")
+  hgsSinif              Int?      @map("hgs_sinif")
+  tescilTarihi          DateTime? @map("tescil_tarihi")
+  muayeneBitisTarihi    DateTime? @map("muayene_bitis_tarihi")
+  sigortaBitisTarihi    DateTime? @map("sigorta_bitis_tarihi")
+  kaskoBitisTarihi      DateTime? @map("kasko_bitis_tarihi")
+  aracKimligi           String?   @map("arac_kimligi")
+  ruhsatSeriNo          String?   @map("ruhsat_seri_no")
+  aciklamaNot           String?   @map("aciklama_not")
+  tekerSayisi           Int?      @map("teker_sayisi")
+  aracKategorisi        String?   @map("arac_kategorisi")
+  belgelerDosyalar      String?   @map("belgeler_dosyalar") // JSON array of file paths
+  createdAt             DateTime  @default(now()) @map("created_at")
+  updatedAt             DateTime  @updatedAt @map("updated_at")
+
+  @@map("t_arac_master")
+}
+
+// ==========================================
+// KULLANICI & ROL YÖNETİMİ (RBAC)
+// ==========================================
+
+model User {
+  id            Int       @id @default(autoincrement())
+  email         String    @unique
+  password      String
+  name          String?
+  role          String    @default("lokasyon_sefi") // super_admin, sirket_yoneticisi, lokasyon_sefi
+  sirketId      Int?      @map("sirket_id")
+  sirket        T_Sirket? @relation(fields: [sirketId], references: [id])
+  lokasyonId    Int?      @map("lokasyon_id")
+  lokasyon      T_Lokasyon? @relation(fields: [lokasyonId], references: [id])
+  isActive      Boolean   @default(true) @map("is_active")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  @@map("users")
+}
+
+// ==========================================
+// OTOMASYON LOG
+// ==========================================
+
+model CronLog {
+  id          Int      @id @default(autoincrement())
+  jobName     String   @map("job_name")
+  status      String   // success, error
+  message     String?
+  affectedCount Int?   @map("affected_count")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@map("cron_logs")
+}

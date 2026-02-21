@@ -1,0 +1,420 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
+import { ArrowLeft, Save, Trash2 } from "lucide-react";
+
+interface Lookup {
+  sirketler: { id: number; sirketAdi: string }[];
+  lokasyonlar: { id: number; lokasyonAdi: string }[];
+  durumlar: { id: number; durumAdi: string }[];
+}
+
+interface FormData {
+  plaka: string;
+  durumId: number | null;
+  sirketId: number | null;
+  lokasyonId: number | null;
+  mulkiyetTipi: string;
+  markaModelTicariAdi: string;
+  kullanimSekli: string;
+  modelYili: number | null;
+  kapasite: string;
+  aracMarka: string;
+  kasaMarka: string;
+  sasiNo: string;
+  motorNo: string;
+  guncelKmSaat: number | null;
+  zimmetMasrafMerkezi: string;
+  uttsDurum: string;
+  seyirTakipCihazNo: string;
+  hgsEtiketNo: string;
+  tescilTarihi: string;
+  muayeneBitisTarihi: string;
+  sigortaBitisTarihi: string;
+  kaskoBitisTarihi: string;
+  aciklamaNot: string;
+  // Computed (read-only)
+  muayeneAlarm?: string;
+  sigortaAlarm?: string;
+  muayeneKalanGun?: number | null;
+  sigortaKalanGun?: number | null;
+}
+
+const emptyForm: FormData = {
+  plaka: "",
+  durumId: null,
+  sirketId: null,
+  lokasyonId: null,
+  mulkiyetTipi: "",
+  markaModelTicariAdi: "",
+  kullanimSekli: "",
+  modelYili: null,
+  kapasite: "",
+  aracMarka: "",
+  kasaMarka: "",
+  sasiNo: "",
+  motorNo: "",
+  guncelKmSaat: null,
+  zimmetMasrafMerkezi: "",
+  uttsDurum: "",
+  seyirTakipCihazNo: "",
+  hgsEtiketNo: "",
+  tescilTarihi: "",
+  muayeneBitisTarihi: "",
+  sigortaBitisTarihi: "",
+  kaskoBitisTarihi: "",
+  aciklamaNot: "",
+};
+
+function formatDateForInput(val: string | null | undefined): string {
+  if (!val) return "";
+  try {
+    return new Date(val).toISOString().split("T")[0];
+  } catch {
+    return "";
+  }
+}
+
+export default function AracFormClient({ aracId }: { aracId: string }) {
+  const router = useRouter();
+  const { data: session } = useSession();
+  const isNew = aracId === "new";
+  const userRole = (session?.user as Record<string, unknown>)?.role as string;
+  const isLokasyonSefi = userRole === "lokasyon_sefi";
+
+  const [activeTab, setActiveTab] = useState(0);
+  const [form, setForm] = useState<FormData>(emptyForm);
+  const [lookups, setLookups] = useState<Lookup | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState<{ type: string; text: string } | null>(null);
+
+  useEffect(() => {
+    const load = async () => {
+      const [lookupsRes, aracRes] = await Promise.all([
+        fetch("/api/lookups").then((r) => r.json()),
+        !isNew ? fetch(`/api/araclar/${aracId}`).then((r) => r.json()) : null,
+      ]);
+      setLookups(lookupsRes);
+      if (aracRes && !aracRes.error) {
+        setForm({
+          plaka: aracRes.plaka || "",
+          durumId: aracRes.durumId,
+          sirketId: aracRes.sirketId,
+          lokasyonId: aracRes.lokasyonId,
+          mulkiyetTipi: aracRes.mulkiyetTipi || "",
+          markaModelTicariAdi: aracRes.markaModelTicariAdi || "",
+          kullanimSekli: aracRes.kullanimSekli || "",
+          modelYili: aracRes.modelYili,
+          kapasite: aracRes.kapasite || "",
+          aracMarka: aracRes.aracMarka || "",
+          kasaMarka: aracRes.kasaMarka || "",
+          sasiNo: aracRes.sasiNo || "",
+          motorNo: aracRes.motorNo || "",
+          guncelKmSaat: aracRes.guncelKmSaat,
+          zimmetMasrafMerkezi: aracRes.zimmetMasrafMerkezi || "",
+          uttsDurum: aracRes.uttsDurum || "",
+          seyirTakipCihazNo: aracRes.seyirTakipCihazNo || "",
+          hgsEtiketNo: aracRes.hgsEtiketNo || "",
+          tescilTarihi: formatDateForInput(aracRes.tescilTarihi),
+          muayeneBitisTarihi: formatDateForInput(aracRes.muayeneBitisTarihi),
+          sigortaBitisTarihi: formatDateForInput(aracRes.sigortaBitisTarihi),
+          kaskoBitisTarihi: formatDateForInput(aracRes.kaskoBitisTarihi),
+          aciklamaNot: aracRes.aciklamaNot || "",
+          muayeneAlarm: aracRes.muayeneAlarm,
+          sigortaAlarm: aracRes.sigortaAlarm,
+          muayeneKalanGun: aracRes.muayeneKalanGun,
+          sigortaKalanGun: aracRes.sigortaKalanGun,
+        });
+      }
+      setLoading(false);
+    };
+    load();
+  }, [aracId, isNew]);
+
+  const handleSave = async () => {
+    setSaving(true);
+    setMessage(null);
+    try {
+      const url = isNew ? "/api/araclar" : `/api/araclar/${aracId}`;
+      const method = isNew ? "POST" : "PUT";
+      const res = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...form,
+          modelYili: form.modelYili ? Number(form.modelYili) : null,
+          guncelKmSaat: form.guncelKmSaat ? Number(form.guncelKmSaat) : null,
+          tescilTarihi: form.tescilTarihi || null,
+          muayeneBitisTarihi: form.muayeneBitisTarihi || null,
+          sigortaBitisTarihi: form.sigortaBitisTarihi || null,
+          kaskoBitisTarihi: form.kaskoBitisTarihi || null,
+        }),
+      });
+      if (res.ok) {
+        setMessage({ type: "success", text: "Kayit basariyla guncellendi" });
+        if (isNew) {
+          const data = await res.json();
+          router.push(`/arac/${data.id}`);
+        }
+      } else {
+        const err = await res.json();
+        setMessage({ type: "error", text: err.error || "Hata olustu" });
+      }
+    } catch {
+      setMessage({ type: "error", text: "Baglanti hatasi" });
+    }
+    setSaving(false);
+  };
+
+  const handleDelete = async () => {
+    if (!confirm("Bu araci silmek istediginize emin misiniz?")) return;
+    const res = await fetch(`/api/araclar/${aracId}`, { method: "DELETE" });
+    if (res.ok) {
+      router.push("/filo?filter=all");
+    }
+  };
+
+  const updateField = (field: string, value: unknown) => {
+    setForm((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const isFieldDisabled = (field: string): boolean => {
+    if (isNew) return false;
+    if (isLokasyonSefi && field !== "guncelKmSaat" && field !== "zimmetMasrafMerkezi") return true;
+    return false;
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+      </div>
+    );
+  }
+
+  const tabs = ["Kimlik Bilgileri", "Operasyon ve Konum", "Evrak ve Tarihler"];
+
+  return (
+    <div className="space-y-4 max-w-5xl">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => router.back()}
+            className="p-2 rounded-lg hover:bg-slate-100 transition-colors"
+          >
+            <ArrowLeft size={20} />
+          </button>
+          <div>
+            <h1 className="text-2xl font-bold text-slate-800">
+              {isNew ? "Yeni Arac Ekle" : form.plaka}
+            </h1>
+            {!isNew && form.muayeneAlarm && (
+              <div className="flex gap-2 mt-1">
+                <span className={`badge ${form.muayeneAlarm.includes("GEÇTİ") ? "badge-danger" : form.muayeneAlarm.includes("YAKLAŞIYOR") ? "badge-warning" : "badge-success"}`}>
+                  Muayene: {form.muayeneAlarm} ({form.muayeneKalanGun}g)
+                </span>
+                <span className={`badge ${form.sigortaAlarm?.includes("GEÇTİ") ? "badge-danger" : form.sigortaAlarm?.includes("YAKLAŞIYOR") ? "badge-warning" : "badge-success"}`}>
+                  Sigorta: {form.sigortaAlarm} ({form.sigortaKalanGun}g)
+                </span>
+              </div>
+            )}
+          </div>
+        </div>
+        <div className="flex gap-2">
+          {!isNew && userRole === "super_admin" && (
+            <button
+              onClick={handleDelete}
+              className="flex items-center gap-2 px-4 py-2.5 border border-red-300 text-red-600 rounded-lg text-sm hover:bg-red-50"
+            >
+              <Trash2 size={16} />
+              Sil
+            </button>
+          )}
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-lg text-sm font-medium disabled:opacity-50"
+          >
+            <Save size={16} />
+            {saving ? "Kaydediliyor..." : "Kaydet"}
+          </button>
+        </div>
+      </div>
+
+      {/* Message */}
+      {message && (
+        <div className={`p-3 rounded-lg text-sm ${message.type === "success" ? "bg-green-50 text-green-700 border border-green-200" : "bg-red-50 text-red-700 border border-red-200"}`}>
+          {message.text}
+        </div>
+      )}
+
+      {/* Tabs */}
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm">
+        <div className="flex border-b border-slate-200">
+          {tabs.map((tab, i) => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(i)}
+              className={`px-6 py-3 text-sm font-medium transition-colors ${
+                activeTab === i ? "tab-active" : "text-slate-500 hover:text-slate-700"
+              }`}
+            >
+              {tab}
+            </button>
+          ))}
+        </div>
+
+        <div className="p-6">
+          {/* Sekme 1: Kimlik Bilgileri */}
+          {activeTab === 0 && (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1">Plaka *</label>
+                <input type="text" value={form.plaka} onChange={(e) => updateField("plaka", e.target.value)} disabled={!isNew} className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm disabled:bg-slate-50" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1">Durum</label>
+                <select value={form.durumId || ""} onChange={(e) => updateField("durumId", e.target.value ? Number(e.target.value) : null)} disabled={isFieldDisabled("durumId")} className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm disabled:bg-slate-50">
+                  <option value="">Seciniz</option>
+                  {lookups?.durumlar.map((d) => <option key={d.id} value={d.id}>{d.durumAdi}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1">Sirket</label>
+                <select value={form.sirketId || ""} onChange={(e) => updateField("sirketId", e.target.value ? Number(e.target.value) : null)} disabled={isFieldDisabled("sirketId")} className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm disabled:bg-slate-50">
+                  <option value="">Seciniz</option>
+                  {lookups?.sirketler.map((s) => <option key={s.id} value={s.id}>{s.sirketAdi}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1">Mulkiyet Tipi</label>
+                <select value={form.mulkiyetTipi} onChange={(e) => updateField("mulkiyetTipi", e.target.value)} disabled={isFieldDisabled("mulkiyetTipi")} className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm disabled:bg-slate-50">
+                  <option value="">Seciniz</option>
+                  <option value="Özmal">Ozmal</option>
+                  <option value="Kiralık">Kiralik</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1">Marka Model</label>
+                <input type="text" value={form.markaModelTicariAdi} onChange={(e) => updateField("markaModelTicariAdi", e.target.value)} disabled={isFieldDisabled("markaModelTicariAdi")} className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm disabled:bg-slate-50" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1">Model Yili</label>
+                <input type="number" value={form.modelYili || ""} onChange={(e) => updateField("modelYili", e.target.value ? Number(e.target.value) : null)} disabled={isFieldDisabled("modelYili")} className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm disabled:bg-slate-50" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1">Arac Marka</label>
+                <input type="text" value={form.aracMarka} onChange={(e) => updateField("aracMarka", e.target.value)} disabled={isFieldDisabled("aracMarka")} className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm disabled:bg-slate-50" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1">Kasa Marka</label>
+                <input type="text" value={form.kasaMarka} onChange={(e) => updateField("kasaMarka", e.target.value)} disabled={isFieldDisabled("kasaMarka")} className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm disabled:bg-slate-50" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1">Kullanim Sekli</label>
+                <input type="text" value={form.kullanimSekli} onChange={(e) => updateField("kullanimSekli", e.target.value)} disabled={isFieldDisabled("kullanimSekli")} className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm disabled:bg-slate-50" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1">Sasi No</label>
+                <input type="text" value={form.sasiNo} onChange={(e) => updateField("sasiNo", e.target.value)} disabled={isFieldDisabled("sasiNo")} className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm disabled:bg-slate-50" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1">Motor No</label>
+                <input type="text" value={form.motorNo} onChange={(e) => updateField("motorNo", e.target.value)} disabled={isFieldDisabled("motorNo")} className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm disabled:bg-slate-50" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1">Kapasite</label>
+                <input type="text" value={form.kapasite} onChange={(e) => updateField("kapasite", e.target.value)} disabled={isFieldDisabled("kapasite")} className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm disabled:bg-slate-50" />
+              </div>
+            </div>
+          )}
+
+          {/* Sekme 2: Operasyon ve Konum */}
+          {activeTab === 1 && (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1">Lokasyon</label>
+                <select value={form.lokasyonId || ""} onChange={(e) => updateField("lokasyonId", e.target.value ? Number(e.target.value) : null)} disabled={isFieldDisabled("lokasyonId")} className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm disabled:bg-slate-50">
+                  <option value="">Seciniz</option>
+                  {lookups?.lokasyonlar.map((l) => <option key={l.id} value={l.id}>{l.lokasyonAdi}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1">Zimmet / Masraf Merkezi</label>
+                <input type="text" value={form.zimmetMasrafMerkezi} onChange={(e) => updateField("zimmetMasrafMerkezi", e.target.value)} className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1">Guncel KM/Saat</label>
+                <input type="number" value={form.guncelKmSaat || ""} onChange={(e) => updateField("guncelKmSaat", e.target.value ? Number(e.target.value) : null)} className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1">UTTS Durum</label>
+                <select value={form.uttsDurum} onChange={(e) => updateField("uttsDurum", e.target.value)} disabled={isFieldDisabled("uttsDurum")} className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm disabled:bg-slate-50">
+                  <option value="">Seciniz</option>
+                  <option value="Takılı">Takili</option>
+                  <option value="Eksik">Eksik</option>
+                  <option value="Bilinmiyor">Bilinmiyor</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1">Seyir Takip Cihaz No</label>
+                <input type="text" value={form.seyirTakipCihazNo} onChange={(e) => updateField("seyirTakipCihazNo", e.target.value)} disabled={isFieldDisabled("seyirTakipCihazNo")} className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm disabled:bg-slate-50" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1">HGS Etiket No</label>
+                <input type="text" value={form.hgsEtiketNo} onChange={(e) => updateField("hgsEtiketNo", e.target.value)} disabled={isFieldDisabled("hgsEtiketNo")} className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm disabled:bg-slate-50" />
+              </div>
+              <div className="md:col-span-2 lg:col-span-3">
+                <label className="block text-xs font-medium text-slate-600 mb-1">Aciklama / Not</label>
+                <textarea value={form.aciklamaNot} onChange={(e) => updateField("aciklamaNot", e.target.value)} disabled={isFieldDisabled("aciklamaNot")} rows={3} className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm disabled:bg-slate-50" />
+              </div>
+            </div>
+          )}
+
+          {/* Sekme 3: Evrak ve Tarihler */}
+          {activeTab === 2 && (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1">Tescil Tarihi</label>
+                <input type="date" value={form.tescilTarihi} onChange={(e) => updateField("tescilTarihi", e.target.value)} disabled={isFieldDisabled("tescilTarihi")} className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm disabled:bg-slate-50" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1">Muayene Bitis Tarihi</label>
+                <input type="date" value={form.muayeneBitisTarihi} onChange={(e) => updateField("muayeneBitisTarihi", e.target.value)} disabled={isFieldDisabled("muayeneBitisTarihi")} className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm disabled:bg-slate-50" />
+                {form.muayeneAlarm && (
+                  <p className={`text-xs mt-1 ${form.muayeneAlarm.includes("GEÇTİ") ? "text-red-600" : form.muayeneAlarm.includes("YAKLAŞIYOR") ? "text-amber-600" : "text-green-600"}`}>
+                    {form.muayeneAlarm} ({form.muayeneKalanGun} gun)
+                  </p>
+                )}
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1">Sigorta Bitis Tarihi</label>
+                <input type="date" value={form.sigortaBitisTarihi} onChange={(e) => updateField("sigortaBitisTarihi", e.target.value)} disabled={isFieldDisabled("sigortaBitisTarihi")} className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm disabled:bg-slate-50" />
+                {form.sigortaAlarm && (
+                  <p className={`text-xs mt-1 ${form.sigortaAlarm.includes("GEÇTİ") ? "text-red-600" : form.sigortaAlarm.includes("YAKLAŞIYOR") ? "text-amber-600" : "text-green-600"}`}>
+                    {form.sigortaAlarm} ({form.sigortaKalanGun} gun)
+                  </p>
+                )}
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1">Kasko Bitis Tarihi</label>
+                <input type="date" value={form.kaskoBitisTarihi} onChange={(e) => updateField("kaskoBitisTarihi", e.target.value)} disabled={isFieldDisabled("kaskoBitisTarihi")} className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm disabled:bg-slate-50" />
+              </div>
+              <div className="md:col-span-2 lg:col-span-3">
+                <label className="block text-xs font-medium text-slate-600 mb-1">Belgeler / Dosyalar</label>
+                <div className="border-2 border-dashed border-slate-300 rounded-lg p-8 text-center">
+                  <p className="text-sm text-slate-500">PDF ve belgeleri surukle-birak veya tikla</p>
+                  <input type="file" multiple accept=".pdf,.jpg,.png,.doc,.docx" className="mt-2" disabled={isFieldDisabled("belgeler")} />
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
