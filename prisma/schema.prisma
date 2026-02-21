@@ -82,8 +82,29 @@ model T_Arac_Master {
   belgelerDosyalar      String?   @map("belgeler_dosyalar") // JSON array of file paths
   createdAt             DateTime  @default(now()) @map("created_at")
   updatedAt             DateTime  @updatedAt @map("updated_at")
+  belgeler              T_Belge[]
 
   @@map("t_arac_master")
+}
+
+// ==========================================
+// BELGE (DOSYA) YÖNETİMİ
+// ==========================================
+
+model T_Belge {
+  id          Int            @id @default(autoincrement())
+  aracId      Int            @map("arac_id")
+  arac        T_Arac_Master  @relation(fields: [aracId], references: [id], onDelete: Cascade)
+  belgeTipi   String         @map("belge_tipi") // ruhsat, sigorta, kasko, muayene, diger
+  dosyaAdi    String         @map("dosya_adi")
+  dosyaBoyut  Int            @map("dosya_boyut") // bytes
+  mimeType    String         @map("mime_type")
+  icerik      Bytes          @map("icerik") // binary file content
+  yukleyenId  Int?           @map("yukleyen_id")
+  aciklama    String?
+  createdAt   DateTime       @default(now()) @map("created_at")
+
+  @@map("t_belge")
 }
 
 // ==========================================

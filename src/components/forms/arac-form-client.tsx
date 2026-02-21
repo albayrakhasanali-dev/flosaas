@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { ArrowLeft, Save, Trash2 } from "lucide-react";
+import { ArrowLeft, Save, Trash2, Upload, FileText, X, Download, Eye } from "lucide-react";
 
 interface Lookup {
   sirketler: { id: number; sirketAdi: string }[];
@@ -40,6 +40,30 @@ interface FormData {
   sigortaAlarm?: string;
   muayeneKalanGun?: number | null;
   sigortaKalanGun?: number | null;
+}
+
+interface Belge {
+  id: number;
+  belgeTipi: string;
+  dosyaAdi: string;
+  dosyaBoyut: number;
+  mimeType: string;
+  aciklama: string | null;
+  createdAt: string;
+}
+
+const belgeTipiLabels: Record<string, string> = {
+  ruhsat: "Ruhsat",
+  sigorta: "Sigorta Policesi",
+  kasko: "Kasko Policesi",
+  muayene: "Muayene Belgesi",
+  diger: "Diger",
+};
+
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return bytes + " B";
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
+  return (bytes / (1024 * 1024)).toFixed(1) + " MB";
 }
 
 const emptyForm: FormData = {
@@ -90,6 +114,9 @@ export default function AracFormClient({ aracId }: { aracId: string }) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: string; text: string } | null>(null);
+  const [belgeler, setBelgeler] = useState<Belge[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const [uploadBelgeTipi, setUploadBelgeTipi] = useState("ruhsat");
 
   useEffect(() => {
     const load = async () => {
@@ -128,6 +155,11 @@ export default function AracFormClient({ aracId }: { aracId: string }) {
           muayeneKalanGun: aracRes.muayeneKalanGun,
           sigortaKalanGun: aracRes.sigortaKalanGun,
         });
+      }
+      // Load belgeler
+      if (!isNew) {
+        const belgeRes = await fetch(`/api/belgeler?aracId=${aracId}`).then((r) => r.json());
+        if (Array.isArray(belgeRes)) setBelgeler(belgeRes);
       }
       setLoading(false);
     };
@@ -179,6 +211,45 @@ export default function AracFormClient({ aracId }: { aracId: string }) {
 
   const updateField = (field: string, value: unknown) => {
     setForm((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0 || isNew) return;
+    setUploading(true);
+    setMessage(null);
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      const fd = new FormData();
+      fd.append("file", file);
+      fd.append("aracId", aracId);
+      fd.append("belgeTipi", uploadBelgeTipi);
+      try {
+        const res = await fetch("/api/belgeler", { method: "POST", body: fd });
+        if (res.ok) {
+          const newBelge = await res.json();
+          setBelgeler((prev) => [newBelge, ...prev]);
+        } else {
+          const err = await res.json();
+          setMessage({ type: "error", text: `${file.name}: ${err.error}` });
+        }
+      } catch {
+        setMessage({ type: "error", text: `${file.name}: Yukleme hatasi` });
+      }
+    }
+    setUploading(false);
+    e.target.value = "";
+  };
+
+  const handleDeleteBelge = async (belgeId: number) => {
+    if (!confirm("Bu belgeyi silmek istediginize emin misiniz?")) return;
+    const res = await fetch(`/api/belgeler/${belgeId}`, { method: "DELETE" });
+    if (res.ok) {
+      setBelgeler((prev) => prev.filter((b) => b.id !== belgeId));
+    } else {
+      const err = await res.json();
+      setMessage({ type: "error", text: err.error || "Belge silinemedi" });
+    }
   };
 
   const isFieldDisabled = (field: string): boolean => {
@@ -377,40 +448,138 @@ export default function AracFormClient({ aracId }: { aracId: string }) {
 
           {/* Sekme 3: Evrak ve Tarihler */}
           {activeTab === 2 && (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1">Tescil Tarihi</label>
-                <input type="date" value={form.tescilTarihi} onChange={(e) => updateField("tescilTarihi", e.target.value)} disabled={isFieldDisabled("tescilTarihi")} className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm disabled:bg-slate-50" />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1">Muayene Bitis Tarihi</label>
-                <input type="date" value={form.muayeneBitisTarihi} onChange={(e) => updateField("muayeneBitisTarihi", e.target.value)} disabled={isFieldDisabled("muayeneBitisTarihi")} className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm disabled:bg-slate-50" />
-                {form.muayeneAlarm && (
-                  <p className={`text-xs mt-1 ${form.muayeneAlarm.includes("GEÇTİ") ? "text-red-600" : form.muayeneAlarm.includes("YAKLAŞIYOR") ? "text-amber-600" : "text-green-600"}`}>
-                    {form.muayeneAlarm} ({form.muayeneKalanGun} gun)
-                  </p>
-                )}
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1">Sigorta Bitis Tarihi</label>
-                <input type="date" value={form.sigortaBitisTarihi} onChange={(e) => updateField("sigortaBitisTarihi", e.target.value)} disabled={isFieldDisabled("sigortaBitisTarihi")} className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm disabled:bg-slate-50" />
-                {form.sigortaAlarm && (
-                  <p className={`text-xs mt-1 ${form.sigortaAlarm.includes("GEÇTİ") ? "text-red-600" : form.sigortaAlarm.includes("YAKLAŞIYOR") ? "text-amber-600" : "text-green-600"}`}>
-                    {form.sigortaAlarm} ({form.sigortaKalanGun} gun)
-                  </p>
-                )}
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1">Kasko Bitis Tarihi</label>
-                <input type="date" value={form.kaskoBitisTarihi} onChange={(e) => updateField("kaskoBitisTarihi", e.target.value)} disabled={isFieldDisabled("kaskoBitisTarihi")} className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm disabled:bg-slate-50" />
-              </div>
-              <div className="md:col-span-2 lg:col-span-3">
-                <label className="block text-xs font-medium text-slate-600 mb-1">Belgeler / Dosyalar</label>
-                <div className="border-2 border-dashed border-slate-300 rounded-lg p-8 text-center">
-                  <p className="text-sm text-slate-500">PDF ve belgeleri surukle-birak veya tikla</p>
-                  <input type="file" multiple accept=".pdf,.jpg,.png,.doc,.docx" className="mt-2" disabled={isFieldDisabled("belgeler")} />
+            <div className="space-y-6">
+              {/* Tarihler */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div>
+                  <label className="block text-xs font-medium text-slate-600 mb-1">Tescil Tarihi</label>
+                  <input type="date" value={form.tescilTarihi} onChange={(e) => updateField("tescilTarihi", e.target.value)} disabled={isFieldDisabled("tescilTarihi")} className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm disabled:bg-slate-50" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-600 mb-1">Muayene Bitis Tarihi</label>
+                  <input type="date" value={form.muayeneBitisTarihi} onChange={(e) => updateField("muayeneBitisTarihi", e.target.value)} disabled={isFieldDisabled("muayeneBitisTarihi")} className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm disabled:bg-slate-50" />
+                  {form.muayeneAlarm && (
+                    <p className={`text-xs mt-1 ${form.muayeneAlarm.includes("GEÇTİ") ? "text-red-600" : form.muayeneAlarm.includes("YAKLAŞIYOR") ? "text-amber-600" : "text-green-600"}`}>
+                      {form.muayeneAlarm} ({form.muayeneKalanGun} gun)
+                    </p>
+                  )}
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-600 mb-1">Sigorta Bitis Tarihi</label>
+                  <input type="date" value={form.sigortaBitisTarihi} onChange={(e) => updateField("sigortaBitisTarihi", e.target.value)} disabled={isFieldDisabled("sigortaBitisTarihi")} className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm disabled:bg-slate-50" />
+                  {form.sigortaAlarm && (
+                    <p className={`text-xs mt-1 ${form.sigortaAlarm.includes("GEÇTİ") ? "text-red-600" : form.sigortaAlarm.includes("YAKLAŞIYOR") ? "text-amber-600" : "text-green-600"}`}>
+                      {form.sigortaAlarm} ({form.sigortaKalanGun} gun)
+                    </p>
+                  )}
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-600 mb-1">Kasko Bitis Tarihi</label>
+                  <input type="date" value={form.kaskoBitisTarihi} onChange={(e) => updateField("kaskoBitisTarihi", e.target.value)} disabled={isFieldDisabled("kaskoBitisTarihi")} className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm disabled:bg-slate-50" />
                 </div>
               </div>
+
+              {/* Belge Yukleme */}
+              {!isNew && (
+                <div>
+                  <h3 className="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2">
+                    <FileText size={16} />
+                    Belgeler ve Dosyalar
+                  </h3>
+
+                  {/* Yukleme alani */}
+                  <div className="border-2 border-dashed border-slate-300 rounded-lg p-5 mb-4 bg-slate-50/50">
+                    <div className="flex flex-wrap items-center gap-3">
+                      <select
+                        value={uploadBelgeTipi}
+                        onChange={(e) => setUploadBelgeTipi(e.target.value)}
+                        className="px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white"
+                      >
+                        <option value="ruhsat">Ruhsat</option>
+                        <option value="sigorta">Sigorta Policesi</option>
+                        <option value="kasko">Kasko Policesi</option>
+                        <option value="muayene">Muayene Belgesi</option>
+                        <option value="diger">Diger</option>
+                      </select>
+                      <label className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium cursor-pointer transition-colors">
+                        <Upload size={16} />
+                        {uploading ? "Yukleniyor..." : "Dosya Sec"}
+                        <input
+                          type="file"
+                          multiple
+                          accept=".pdf,.jpg,.jpeg,.png,.webp"
+                          onChange={handleFileUpload}
+                          disabled={uploading}
+                          className="hidden"
+                        />
+                      </label>
+                      <span className="text-xs text-slate-400">PDF, JPEG, PNG (maks. 5MB)</span>
+                    </div>
+                  </div>
+
+                  {/* Belge listesi */}
+                  {belgeler.length === 0 ? (
+                    <div className="text-center py-8 text-slate-400 text-sm">
+                      Henuz belge yuklenmemis
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {belgeler.map((belge) => (
+                        <div
+                          key={belge.id}
+                          className="flex items-center justify-between p-3 bg-white border border-slate-200 rounded-lg hover:border-slate-300 transition-colors"
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-lg bg-red-50 flex items-center justify-center">
+                              <FileText size={20} className="text-red-500" />
+                            </div>
+                            <div>
+                              <p className="text-sm font-medium text-slate-700">{belge.dosyaAdi}</p>
+                              <div className="flex items-center gap-2 mt-0.5">
+                                <span className="inline-block px-2 py-0.5 bg-blue-50 text-blue-700 text-xs rounded-full font-medium">
+                                  {belgeTipiLabels[belge.belgeTipi] || belge.belgeTipi}
+                                </span>
+                                <span className="text-xs text-slate-400">{formatFileSize(belge.dosyaBoyut)}</span>
+                                <span className="text-xs text-slate-400">
+                                  {new Date(belge.createdAt).toLocaleDateString("tr-TR")}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <a
+                              href={`/api/belgeler/${belge.id}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="p-2 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                              title="Goruntule"
+                            >
+                              <Eye size={16} />
+                            </a>
+                            <a
+                              href={`/api/belgeler/${belge.id}`}
+                              download={belge.dosyaAdi}
+                              className="p-2 text-slate-500 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                              title="Indir"
+                            >
+                              <Download size={16} />
+                            </a>
+                            {userRole !== "lokasyon_sefi" && (
+                              <button
+                                onClick={() => handleDeleteBelge(belge.id)}
+                                className="p-2 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                title="Sil"
+                              >
+                                <X size={16} />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
         </div>
