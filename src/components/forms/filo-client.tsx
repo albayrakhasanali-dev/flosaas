@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { Search, Plus, ChevronLeft, ChevronRight, Eye } from "lucide-react";
+import { Search, Plus, ChevronLeft, ChevronRight, Eye, Filter, X } from "lucide-react";
 
 interface Arac {
   id: number;
@@ -25,6 +25,13 @@ interface PaginatedResponse {
   pagination: { page: number; limit: number; total: number; totalPages: number };
 }
 
+interface Lookups {
+  sirketler: { id: number; sirketAdi: string }[];
+  lokasyonlar: { id: number; lokasyonAdi: string }[];
+  durumlar: { id: number; durumAdi: string }[];
+  kullanimSekilleri: string[];
+}
+
 const filterLabels: Record<string, string> = {
   all: "Tum Filo",
   aktif: "🟢 Aktif Filo",
@@ -42,6 +49,27 @@ export default function FiloClient() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
+  const [lookups, setLookups] = useState<Lookups | null>(null);
+  const [showFilters, setShowFilters] = useState(false);
+
+  // Advanced filter states
+  const [fLokasyon, setFLokasyon] = useState("");
+  const [fSirket, setFSirket] = useState("");
+  const [fDurum, setFDurum] = useState("");
+  const [fKullanim, setFKullanim] = useState("");
+  const [fMulkiyet, setFMulkiyet] = useState("");
+  const [fUtts, setFUtts] = useState("");
+
+  // Count active filters
+  const activeFilterCount = [fLokasyon, fSirket, fDurum, fKullanim, fMulkiyet, fUtts].filter(Boolean).length;
+
+  // Load lookups
+  useEffect(() => {
+    fetch("/api/lookups")
+      .then((r) => r.json())
+      .then((data) => setLookups(data))
+      .catch(() => {});
+  }, []);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -51,19 +79,36 @@ export default function FiloClient() {
     params.set("page", String(page));
     params.set("limit", "25");
 
+    // Advanced filters
+    if (fLokasyon) params.set("lokasyonId", fLokasyon);
+    if (fSirket) params.set("sirketId", fSirket);
+    if (fDurum) params.set("durumId", fDurum);
+    if (fKullanim) params.set("kullanimSekli", fKullanim);
+    if (fMulkiyet) params.set("mulkiyetTipi", fMulkiyet);
+    if (fUtts) params.set("uttsDurum", fUtts);
+
     const res = await fetch(`/api/araclar?${params}`);
     const json = await res.json();
     setData(json);
     setLoading(false);
-  }, [filter, search, page]);
+  }, [filter, search, page, fLokasyon, fSirket, fDurum, fKullanim, fMulkiyet, fUtts]);
 
   useEffect(() => {
     setPage(1);
-  }, [filter, search]);
+  }, [filter, search, fLokasyon, fSirket, fDurum, fKullanim, fMulkiyet, fUtts]);
 
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  const clearFilters = () => {
+    setFLokasyon("");
+    setFSirket("");
+    setFDurum("");
+    setFKullanim("");
+    setFMulkiyet("");
+    setFUtts("");
+  };
 
   return (
     <div className="space-y-4">
@@ -86,17 +131,182 @@ export default function FiloClient() {
         </button>
       </div>
 
-      {/* Search */}
-      <div className="relative max-w-md">
-        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-        <input
-          type="text"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Plaka, marka veya model ara..."
-          className="w-full pl-10 pr-4 py-2.5 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-        />
+      {/* Search + Filter Toggle */}
+      <div className="flex items-center gap-3">
+        <div className="relative flex-1 max-w-md">
+          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Plaka, marka veya model ara..."
+            className="w-full pl-10 pr-4 py-2.5 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+          />
+        </div>
+        <button
+          onClick={() => setShowFilters(!showFilters)}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium border transition-colors ${
+            showFilters || activeFilterCount > 0
+              ? "bg-blue-50 border-blue-300 text-blue-700"
+              : "bg-white border-slate-300 text-slate-600 hover:bg-slate-50"
+          }`}
+        >
+          <Filter size={16} />
+          Filtreler
+          {activeFilterCount > 0 && (
+            <span className="bg-blue-600 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
+              {activeFilterCount}
+            </span>
+          )}
+        </button>
+        {activeFilterCount > 0 && (
+          <button
+            onClick={clearFilters}
+            className="flex items-center gap-1 px-3 py-2.5 rounded-lg text-sm text-red-600 hover:bg-red-50 border border-red-200 transition-colors"
+          >
+            <X size={14} />
+            Temizle
+          </button>
+        )}
       </div>
+
+      {/* Advanced Filters Panel */}
+      {showFilters && (
+        <div className="bg-slate-50 border border-slate-200 rounded-xl p-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+            {/* Lokasyon */}
+            <div>
+              <label className="block text-xs font-medium text-slate-500 mb-1">Lokasyon</label>
+              <select
+                value={fLokasyon}
+                onChange={(e) => setFLokasyon(e.target.value)}
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+              >
+                <option value="">Tumu</option>
+                {lookups?.lokasyonlar.map((l) => (
+                  <option key={l.id} value={l.id}>{l.lokasyonAdi}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Sirket */}
+            <div>
+              <label className="block text-xs font-medium text-slate-500 mb-1">Sirket</label>
+              <select
+                value={fSirket}
+                onChange={(e) => setFSirket(e.target.value)}
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+              >
+                <option value="">Tumu</option>
+                {lookups?.sirketler.map((s) => (
+                  <option key={s.id} value={s.id}>{s.sirketAdi}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Durum */}
+            <div>
+              <label className="block text-xs font-medium text-slate-500 mb-1">Durum</label>
+              <select
+                value={fDurum}
+                onChange={(e) => setFDurum(e.target.value)}
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+              >
+                <option value="">Tumu</option>
+                {lookups?.durumlar.map((d) => (
+                  <option key={d.id} value={d.id}>{d.durumAdi}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Kullanim Sekli */}
+            <div>
+              <label className="block text-xs font-medium text-slate-500 mb-1">Kullanim Sekli</label>
+              <select
+                value={fKullanim}
+                onChange={(e) => setFKullanim(e.target.value)}
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+              >
+                <option value="">Tumu</option>
+                {lookups?.kullanimSekilleri.map((k) => (
+                  <option key={k} value={k}>{k}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Mulkiyet Tipi */}
+            <div>
+              <label className="block text-xs font-medium text-slate-500 mb-1">Mulkiyet Tipi</label>
+              <select
+                value={fMulkiyet}
+                onChange={(e) => setFMulkiyet(e.target.value)}
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+              >
+                <option value="">Tumu</option>
+                <option value="Özmal">Ozmal</option>
+                <option value="Kiralık">Kiralik</option>
+              </select>
+            </div>
+
+            {/* UTTS Durum */}
+            <div>
+              <label className="block text-xs font-medium text-slate-500 mb-1">UTTS Durum</label>
+              <select
+                value={fUtts}
+                onChange={(e) => setFUtts(e.target.value)}
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+              >
+                <option value="">Tumu</option>
+                <option value="Takılı">Takili</option>
+                <option value="Eksik">Eksik</option>
+                <option value="Bilinmiyor">Bilinmiyor</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Active Filter Tags */}
+      {activeFilterCount > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {fLokasyon && (
+            <span className="inline-flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">
+              Lokasyon: {lookups?.lokasyonlar.find((l) => String(l.id) === fLokasyon)?.lokasyonAdi}
+              <button onClick={() => setFLokasyon("")} className="hover:text-blue-900"><X size={12} /></button>
+            </span>
+          )}
+          {fSirket && (
+            <span className="inline-flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">
+              Sirket: {lookups?.sirketler.find((s) => String(s.id) === fSirket)?.sirketAdi}
+              <button onClick={() => setFSirket("")} className="hover:text-blue-900"><X size={12} /></button>
+            </span>
+          )}
+          {fDurum && (
+            <span className="inline-flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">
+              Durum: {lookups?.durumlar.find((d) => String(d.id) === fDurum)?.durumAdi}
+              <button onClick={() => setFDurum("")} className="hover:text-blue-900"><X size={12} /></button>
+            </span>
+          )}
+          {fKullanim && (
+            <span className="inline-flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">
+              Kullanim: {fKullanim}
+              <button onClick={() => setFKullanim("")} className="hover:text-blue-900"><X size={12} /></button>
+            </span>
+          )}
+          {fMulkiyet && (
+            <span className="inline-flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">
+              Mulkiyet: {fMulkiyet}
+              <button onClick={() => setFMulkiyet("")} className="hover:text-blue-900"><X size={12} /></button>
+            </span>
+          )}
+          {fUtts && (
+            <span className="inline-flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">
+              UTTS: {fUtts}
+              <button onClick={() => setFUtts("")} className="hover:text-blue-900"><X size={12} /></button>
+            </span>
+          )}
+        </div>
+      )}
 
       {/* Data Grid */}
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">

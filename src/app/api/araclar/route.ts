@@ -13,6 +13,14 @@ export async function GET(req: NextRequest) {
   const page = parseInt(searchParams.get("page") || "1");
   const limit = parseInt(searchParams.get("limit") || "50");
 
+  // Advanced filters
+  const lokasyonId = searchParams.get("lokasyonId");
+  const sirketId = searchParams.get("sirketId");
+  const durumId = searchParams.get("durumId");
+  const kullanimSekli = searchParams.get("kullanimSekli");
+  const mulkiyetTipi = searchParams.get("mulkiyetTipi");
+  const uttsDurumFilter = searchParams.get("uttsDurum");
+
   const rbacWhere = buildWhereClause(user);
   let filterWhere: Record<string, unknown> = {};
 
@@ -31,6 +39,15 @@ export async function GET(req: NextRequest) {
       break;
   }
 
+  // Build advanced filter conditions
+  const advancedFilters: Record<string, unknown>[] = [];
+  if (lokasyonId) advancedFilters.push({ lokasyonId: parseInt(lokasyonId) });
+  if (sirketId) advancedFilters.push({ sirketId: parseInt(sirketId) });
+  if (durumId) advancedFilters.push({ durumId: parseInt(durumId) });
+  if (kullanimSekli) advancedFilters.push({ kullanimSekli });
+  if (mulkiyetTipi) advancedFilters.push({ mulkiyetTipi });
+  if (uttsDurumFilter) advancedFilters.push({ uttsDurum: uttsDurumFilter });
+
   let searchWhere: Record<string, unknown> = {};
   if (search) {
     searchWhere = {
@@ -42,7 +59,7 @@ export async function GET(req: NextRequest) {
     };
   }
 
-  const where = { AND: [rbacWhere, filterWhere, searchWhere] };
+  const where = { AND: [rbacWhere, filterWhere, searchWhere, ...advancedFilters] };
 
   const [araclar, total] = await Promise.all([
     prisma.t_Arac_Master.findMany({
