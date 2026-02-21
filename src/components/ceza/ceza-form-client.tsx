@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Save, Trash2, FileText, Upload } from "lucide-react";
+import { ArrowLeft, Save, Trash2, FileText, Upload, X } from "lucide-react";
 
 interface AracOption {
   id: number;
@@ -87,6 +87,19 @@ export default function CezaFormClient({ cezaId }: { cezaId?: string }) {
   const [activeTab, setActiveTab] = useState<"genel" | "ihlal" | "odeme" | "itiraz">("genel");
   const [tutanakFile, setTutanakFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [showAracDropdown, setShowAracDropdown] = useState(false);
+  const aracDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (aracDropdownRef.current && !aracDropdownRef.current.contains(e.target as Node)) {
+        setShowAracDropdown(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   // Load arac list for dropdown
   useEffect(() => {
@@ -297,25 +310,55 @@ export default function CezaFormClient({ cezaId }: { cezaId?: string }) {
             {/* Arac Secimi */}
             <div className="md:col-span-2">
               <label className={labelClass}>Arac (Plaka) *</label>
-              <div className="space-y-2">
+              <div className="relative" ref={aracDropdownRef}>
                 <input
                   type="text"
                   value={aracSearch}
-                  onChange={(e) => setAracSearch(e.target.value)}
-                  placeholder="Plaka ara..."
-                  className={inputClass}
+                  onChange={(e) => {
+                    setAracSearch(e.target.value);
+                    setShowAracDropdown(true);
+                  }}
+                  onFocus={() => setShowAracDropdown(true)}
+                  placeholder={form.aracId ? `Secili: ${form.plaka}` : "Plaka yazarak arac arayın..."}
+                  className={`${inputClass} ${form.aracId ? "border-green-400 bg-green-50" : ""}`}
                 />
-                <select
-                  value={form.aracId}
-                  onChange={(e) => handleChange("aracId", e.target.value)}
-                  className={inputClass}
-                  size={Math.min(filteredAraclar.length + 1, 6)}
-                >
-                  <option value="">Arac Secin</option>
-                  {filteredAraclar.map((a) => (
-                    <option key={a.id} value={a.id}>{a.plaka}</option>
-                  ))}
-                </select>
+                {form.aracId && (
+                  <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-2">
+                    <span className="text-xs font-semibold text-green-700 bg-green-100 px-2 py-0.5 rounded">{form.plaka}</span>
+                    <button
+                      type="button"
+                      onClick={() => { handleChange("aracId", ""); setForm(prev => ({...prev, plaka: ""})); setAracSearch(""); }}
+                      className="text-slate-400 hover:text-red-500"
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                )}
+                {showAracDropdown && filteredAraclar.length > 0 && (
+                  <div className="absolute z-20 top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                    {filteredAraclar.slice(0, 20).map((a) => (
+                      <button
+                        key={a.id}
+                        type="button"
+                        onClick={() => {
+                          handleChange("aracId", String(a.id));
+                          setAracSearch("");
+                          setShowAracDropdown(false);
+                        }}
+                        className={`w-full text-left px-4 py-2.5 text-sm hover:bg-blue-50 transition-colors ${
+                          String(a.id) === form.aracId ? "bg-blue-50 text-blue-700 font-semibold" : "text-slate-700"
+                        }`}
+                      >
+                        {a.plaka}
+                      </button>
+                    ))}
+                    {filteredAraclar.length > 20 && (
+                      <p className="px-4 py-2 text-xs text-slate-400 border-t">
+                        {filteredAraclar.length - 20} arac daha var, aramayı daraltın...
+                      </p>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
 
