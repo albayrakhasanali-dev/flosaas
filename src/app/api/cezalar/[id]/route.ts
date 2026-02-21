@@ -58,6 +58,8 @@ export async function PUT(
         indirimlitutar: body.indirimlitutar ? parseFloat(body.indirimlitutar) : null,
         odemeDurumu: body.odemeDurumu,
         odemeTarihi: body.odemeTarihi ? new Date(body.odemeTarihi) : null,
+        tahsilatYontemi: body.tahsilatYontemi || null,
+        tahsilatNotu: body.tahsilatNotu || null,
         sorumluKisi: body.sorumluKisi || null,
         sorumluTc: body.sorumluTc || null,
         plaka: body.plaka || undefined,

@@ -126,6 +126,9 @@ model T_Ceza {
   indirimlitutar  Float?         @map("indirimli_tutar")   // Erken odeme indirimi
   odemeDurumu     String         @default("odenmedi") @map("odeme_durumu") // odenmedi, odendi, itiraz_edildi
   odemeTarihi     DateTime?      @map("odeme_tarihi")
+  tahsilatYontemi String?        @map("tahsilat_yontemi")  // sirket_odedi, maas_kesinti, sofor_odedi, diger
+  tahsilatNotu    String?        @map("tahsilat_notu")     // Tahsilat aciklamasi
+  dekontDosyaId   Int?           @map("dekont_dosya_id")   // T_Belge referansi (dekont PDF)
   sorumluKisi     String?        @map("sorumlu_kisi")      // Surucu / sorumlu adi
   sorumluTc       String?        @map("sorumlu_tc")        // TC kimlik (opsiyonel)
   plaka           String?                                   // Ceza anindaki plaka

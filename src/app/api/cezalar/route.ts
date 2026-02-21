@@ -132,6 +132,8 @@ export async function POST(req: NextRequest) {
         indirimlitutar: body.indirimlitutar ? parseFloat(body.indirimlitutar) : null,
         odemeDurumu: body.odemeDurumu || "odenmedi",
         odemeTarihi: body.odemeTarihi ? new Date(body.odemeTarihi) : null,
+        tahsilatYontemi: body.tahsilatYontemi || null,
+        tahsilatNotu: body.tahsilatNotu || null,
         sorumluKisi: body.sorumluKisi || null,
         sorumluTc: body.sorumluTc || null,
         plaka: body.plaka || arac.plaka,

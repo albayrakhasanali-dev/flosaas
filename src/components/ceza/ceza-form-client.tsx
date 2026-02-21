@@ -22,6 +22,8 @@ interface CezaData {
   indirimlitutar: string;
   odemeDurumu: string;
   odemeTarihi: string;
+  tahsilatYontemi: string;
+  tahsilatNotu: string;
   sorumluKisi: string;
   sorumluTc: string;
   plaka: string;
@@ -47,6 +49,8 @@ const emptyCeza: CezaData = {
   indirimlitutar: "",
   odemeDurumu: "odenmedi",
   odemeTarihi: "",
+  tahsilatYontemi: "",
+  tahsilatNotu: "",
   sorumluKisi: "",
   sorumluTc: "",
   plaka: "",
@@ -86,6 +90,7 @@ export default function CezaFormClient({ cezaId }: { cezaId?: string }) {
   const [aracSearch, setAracSearch] = useState("");
   const [activeTab, setActiveTab] = useState<"genel" | "ihlal" | "odeme" | "itiraz">("genel");
   const [tutanakFile, setTutanakFile] = useState<File | null>(null);
+  const [dekontFile, setDekontFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [showAracDropdown, setShowAracDropdown] = useState(false);
   const aracDropdownRef = useRef<HTMLDivElement>(null);
@@ -134,6 +139,8 @@ export default function CezaFormClient({ cezaId }: { cezaId?: string }) {
             indirimlitutar: data.indirimlitutar ? String(data.indirimlitutar) : "",
             odemeDurumu: data.odemeDurumu || "odenmedi",
             odemeTarihi: formatDateForInput(data.odemeTarihi),
+            tahsilatYontemi: data.tahsilatYontemi || "",
+            tahsilatNotu: data.tahsilatNotu || "",
             sorumluKisi: data.sorumluKisi || "",
             sorumluTc: data.sorumluTc || "",
             plaka: data.plaka || "",
@@ -180,6 +187,10 @@ export default function CezaFormClient({ cezaId }: { cezaId?: string }) {
         if (tutanakFile && form.aracId) {
           await handleTutanakUpload(form.aracId);
         }
+        // Upload dekont file if selected
+        if (dekontFile && form.aracId) {
+          await handleDekontUpload(form.aracId);
+        }
         router.push("/trafik-cezalari");
         router.refresh();
       } else {
@@ -219,6 +230,19 @@ export default function CezaFormClient({ cezaId }: { cezaId?: string }) {
     await fetch("/api/belgeler", { method: "POST", body: fd });
     setUploading(false);
     setTutanakFile(null);
+  };
+
+  const handleDekontUpload = async (aracId: string) => {
+    if (!dekontFile) return;
+    setUploading(true);
+    const fd = new FormData();
+    fd.append("file", dekontFile);
+    fd.append("aracId", aracId);
+    fd.append("belgeTipi", "diger");
+    fd.append("aciklama", `Ceza Odeme Dekontu - ${form.tutanakNo || form.plaka || "Belirtilmedi"}`);
+    await fetch("/api/belgeler", { method: "POST", body: fd });
+    setUploading(false);
+    setDekontFile(null);
   };
 
   const filteredAraclar = aracSearch
@@ -573,19 +597,85 @@ export default function CezaFormClient({ cezaId }: { cezaId?: string }) {
               </select>
             </div>
             {form.odemeDurumu === "odendi" && (
-              <div>
-                <label className={labelClass}>Odeme Tarihi</label>
-                <input
-                  type="date"
-                  value={form.odemeTarihi}
-                  onChange={(e) => handleChange("odemeTarihi", e.target.value)}
-                  className={inputClass}
-                />
+              <>
+                <div>
+                  <label className={labelClass}>Odeme Tarihi</label>
+                  <input
+                    type="date"
+                    value={form.odemeTarihi}
+                    onChange={(e) => handleChange("odemeTarihi", e.target.value)}
+                    className={inputClass}
+                  />
+                </div>
+                <div>
+                  <label className={labelClass}>Tahsilat Yontemi</label>
+                  <select
+                    value={form.tahsilatYontemi}
+                    onChange={(e) => handleChange("tahsilatYontemi", e.target.value)}
+                    className={inputClass}
+                  >
+                    <option value="">Secin</option>
+                    <option value="sirket_odedi">Sirket Odedi</option>
+                    <option value="maas_kesinti">Maasindan Kesildi</option>
+                    <option value="sofor_odedi">Sofor Kendisi Odedi</option>
+                    <option value="taksit">Taksitlendirildi</option>
+                    <option value="diger">Diger</option>
+                  </select>
+                </div>
+                <div className="md:col-span-2">
+                  <label className={labelClass}>Tahsilat Notu</label>
+                  <input
+                    type="text"
+                    value={form.tahsilatNotu}
+                    onChange={(e) => handleChange("tahsilatNotu", e.target.value)}
+                    placeholder="Orn: Subat 2026 maasindan kesildi, Dekont no: 12345..."
+                    className={inputClass}
+                  />
+                </div>
+                {/* Dekont Dosyasi */}
+                <div className="md:col-span-2">
+                  <label className={labelClass}>Dekont / Odeme Belgesi</label>
+                  <div className="flex items-center gap-3">
+                    <label className="flex items-center gap-2 px-4 py-2.5 border border-dashed border-slate-300 rounded-lg text-sm text-slate-500 hover:border-blue-400 hover:text-blue-600 cursor-pointer transition-colors">
+                      <Upload size={16} />
+                      {dekontFile ? dekontFile.name : "Dekont dosyasi sec (PDF/Gorsel)"}
+                      <input
+                        type="file"
+                        accept=".pdf,.jpg,.jpeg,.png,.webp"
+                        className="hidden"
+                        onChange={(e) => setDekontFile(e.target.files?.[0] || null)}
+                      />
+                    </label>
+                    {dekontFile && (
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-slate-400">
+                          {(dekontFile.size / 1024).toFixed(0)} KB
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setDekontFile(null)}
+                          className="text-slate-400 hover:text-red-500"
+                        >
+                          <X size={14} />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </>
+            )}
+            {/* Tahsilat ozet bilgisi (odenmemis iken) */}
+            {form.odemeDurumu !== "odendi" && form.sorumluKisi && (
+              <div className="md:col-span-2 bg-amber-50 border border-amber-200 rounded-lg p-3">
+                <p className="text-sm text-amber-700">
+                  <span className="font-semibold">Sorumlu:</span> {form.sorumluKisi}
+                  {form.sonOdemeTarihi && ` | Son odeme: ${new Date(form.sonOdemeTarihi).toLocaleDateString("tr-TR")}`}
+                </p>
               </div>
             )}
             {/* Odeme ozeti */}
             <div className="md:col-span-2 bg-slate-50 border border-slate-200 rounded-lg p-4">
-              <div className="grid grid-cols-3 gap-4 text-center">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
                 <div>
                   <p className="text-xs text-slate-500">Ceza Tutari</p>
                   <p className="text-lg font-bold text-slate-800">
@@ -606,6 +696,16 @@ export default function CezaFormClient({ cezaId }: { cezaId?: string }) {
                   }`}>
                     {form.odemeDurumu === "odendi" ? "Odendi" :
                      form.odemeDurumu === "itiraz_edildi" ? "Itiraz" : "Odenmedi"}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-slate-500">Tahsilat</p>
+                  <p className="text-sm font-semibold text-slate-700">
+                    {form.tahsilatYontemi === "sirket_odedi" ? "Sirket Odedi" :
+                     form.tahsilatYontemi === "maas_kesinti" ? "Maastan Kesildi" :
+                     form.tahsilatYontemi === "sofor_odedi" ? "Sofor Odedi" :
+                     form.tahsilatYontemi === "taksit" ? "Taksit" :
+                     form.tahsilatYontemi === "diger" ? "Diger" : "-"}
                   </p>
                 </div>
               </div>
