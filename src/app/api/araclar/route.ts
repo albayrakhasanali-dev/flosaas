@@ -52,9 +52,9 @@ export async function GET(req: NextRequest) {
   if (search) {
     searchWhere = {
       OR: [
-        { plaka: { contains: search } },
-        { markaModelTicariAdi: { contains: search } },
-        { aracKimligi: { contains: search } },
+        { plaka: { contains: search, mode: "insensitive" } },
+        { markaModelTicariAdi: { contains: search, mode: "insensitive" } },
+        { aracKimligi: { contains: search, mode: "insensitive" } },
       ],
     };
   }

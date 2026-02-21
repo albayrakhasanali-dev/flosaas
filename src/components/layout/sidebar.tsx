@@ -12,15 +12,25 @@ import {
   Radio,
   LogOut,
   User,
+  FileWarning,
 } from "lucide-react";
 
-const menuItems = [
+interface MenuItem {
+  href: string;
+  label: string;
+  icon: React.ComponentType<{ size?: number }>;
+  badge?: string;
+  section?: string;
+}
+
+const menuItems: MenuItem[] = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/filo?filter=all", label: "Tum Filo", icon: Truck },
+  { href: "/filo?filter=all", label: "Tum Filo", icon: Truck, section: "Filo Yonetimi" },
   { href: "/filo?filter=aktif", label: "Aktif Filo", icon: CheckCircle, badge: "🟢" },
   { href: "/filo?filter=pasif", label: "Pasif / Yatan", icon: PauseCircle, badge: "⚫" },
   { href: "/filo?filter=hukuki", label: "Hukuki ve Satis", icon: AlertTriangle, badge: "🔴" },
   { href: "/filo?filter=utts_eksik", label: "UTTS Montaj Bekleyenler", icon: Radio, badge: "⚠️" },
+  { href: "/trafik-cezalari", label: "Trafik Cezalari", icon: FileWarning, section: "Takip Modulleri", badge: "🚨" },
 ];
 
 export default function Sidebar() {
@@ -45,28 +55,39 @@ export default function Sidebar() {
 
       {/* Navigation */}
       <nav className="flex-1 py-4 overflow-y-auto">
-        {menuItems.map((item) => {
+        {menuItems.map((item, index) => {
           const Icon = item.icon;
           const isActive =
             item.href === "/"
               ? pathname === "/"
-              : pathname.startsWith("/filo") &&
-                item.href.includes(new URLSearchParams(item.href.split("?")[1]).get("filter") || "");
+              : item.href.startsWith("/filo")
+              ? pathname.startsWith("/filo") &&
+                item.href.includes(new URLSearchParams(item.href.split("?")[1]).get("filter") || "")
+              : pathname.startsWith(item.href.split("?")[0]);
+
+          // Show section header
+          const showSection = item.section && (index === 0 || menuItems[index - 1]?.section !== item.section);
 
           return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={`flex items-center gap-3 px-5 py-3 text-sm transition-colors ${
-                isActive
-                  ? "bg-blue-600/20 text-blue-300 border-r-2 border-blue-400"
-                  : "text-slate-300 hover:bg-slate-800 hover:text-white"
-              }`}
-            >
-              <Icon size={18} />
-              <span className="flex-1">{item.label}</span>
-              {item.badge && <span className="text-xs">{item.badge}</span>}
-            </Link>
+            <div key={item.href}>
+              {showSection && (
+                <p className="px-5 pt-4 pb-1 text-[10px] uppercase tracking-wider text-slate-500 font-semibold">
+                  {item.section}
+                </p>
+              )}
+              <Link
+                href={item.href}
+                className={`flex items-center gap-3 px-5 py-3 text-sm transition-colors ${
+                  isActive
+                    ? "bg-blue-600/20 text-blue-300 border-r-2 border-blue-400"
+                    : "text-slate-300 hover:bg-slate-800 hover:text-white"
+                }`}
+              >
+                <Icon size={18} />
+                <span className="flex-1">{item.label}</span>
+                {item.badge && <span className="text-xs">{item.badge}</span>}
+              </Link>
+            </div>
           );
         })}
       </nav>

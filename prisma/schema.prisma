@@ -83,6 +83,7 @@ model T_Arac_Master {
   createdAt             DateTime  @default(now()) @map("created_at")
   updatedAt             DateTime  @updatedAt @map("updated_at")
   belgeler              T_Belge[]
+  cezalar               T_Ceza[]
 
   @@map("t_arac_master")
 }
@@ -105,6 +106,43 @@ model T_Belge {
   createdAt   DateTime       @default(now()) @map("created_at")
 
   @@map("t_belge")
+}
+
+// ==========================================
+// TRAFİK CEZASI TAKİP
+// ==========================================
+
+model T_Ceza {
+  id              Int            @id @default(autoincrement())
+  aracId          Int            @map("arac_id")
+  arac            T_Arac_Master  @relation(fields: [aracId], references: [id], onDelete: Cascade)
+  tutanakNo       String?        @map("tutanak_no")        // TA-05116049
+  cezaTarihi      DateTime       @map("ceza_tarihi")
+  tebligTarihi    DateTime?      @map("teblig_tarihi")
+  sonOdemeTarihi  DateTime?      @map("son_odeme_tarihi")
+  cezaTuru        String         @map("ceza_turu")         // hiz, park, kirmizi_isik, diger
+  aciklama        String?                                   // Ceza detay aciklamasi
+  cezaTutari      Float          @map("ceza_tutari")       // TL
+  indirimlitutar  Float?         @map("indirimli_tutar")   // Erken odeme indirimi
+  odemeDurumu     String         @default("odenmedi") @map("odeme_durumu") // odenmedi, odendi, itiraz_edildi
+  odemeTarihi     DateTime?      @map("odeme_tarihi")
+  sorumluKisi     String?        @map("sorumlu_kisi")      // Surucu / sorumlu adi
+  sorumluTc       String?        @map("sorumlu_tc")        // TC kimlik (opsiyonel)
+  plaka           String?                                   // Ceza anindaki plaka
+  ihlalYeri       String?        @map("ihlal_yeri")        // Cezanin kesildigi yer
+  ihlalHizi       Int?           @map("ihlal_hizi")        // Hiz ihlali durumunda km/h
+  sinirHizi       Int?           @map("sinir_hizi")        // Hiz siniri km/h
+  itirazDurumu    String?        @map("itiraz_durumu")     // yapilmadi, yapildi, kabul, red
+  itirazTarihi    DateTime?      @map("itiraz_tarihi")
+  itirazNotu      String?        @map("itiraz_notu")
+  kaynakKurum     String?        @map("kaynak_kurum")      // EGM, Belediye, Jandarma
+  tutanakDosyaId  Int?           @map("tutanak_dosya_id")  // T_Belge referansi (tutanak PDF)
+  ekleyenId       Int?           @map("ekleyen_id")
+  notlar          String?
+  createdAt       DateTime       @default(now()) @map("created_at")
+  updatedAt       DateTime       @updatedAt @map("updated_at")
+
+  @@map("t_ceza")
 }
 
 // ==========================================
