@@ -47,9 +47,19 @@ export async function GET(req: NextRequest) {
     });
   }
 
+  // Filter: only vehicles that require sigorta AND are not pasif/yatan
+  const aracFilter = {
+    ...rbacWhere,
+    sigortaGerekli: true,
+    durum: {
+      ...((rbacWhere as Record<string, unknown>).durum as object || {}),
+      durumAdi: { notIn: ["⚫ YATAN", "🟡 BAKIMDA"] },
+    },
+  };
+
   const where = {
     AND: [
-      { arac: rbacWhere },
+      { arac: aracFilter },
       ...filters,
     ],
   };
@@ -74,8 +84,8 @@ export async function GET(req: NextRequest) {
     prisma.t_Sigorta.count({ where }),
   ]);
 
-  // Summary stats
-  const allWhere = { arac: rbacWhere };
+  // Summary stats — also filter by sigortaGerekli + not pasif
+  const allWhere = { arac: aracFilter };
   const [toplamPolice, suresiGecmis, yaklasiyor, primStats, odenmemisPrim] = await Promise.all([
     prisma.t_Sigorta.count({ where: allWhere }),
     prisma.t_Sigorta.count({ where: { ...allWhere, bitisTarihi: { lt: now } } }),

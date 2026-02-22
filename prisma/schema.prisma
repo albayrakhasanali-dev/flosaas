@@ -77,6 +77,8 @@ model T_Arac_Master {
   aracKimligi           String?   @map("arac_kimligi")
   ruhsatSeriNo          String?   @map("ruhsat_seri_no")
   aciklamaNot           String?   @map("aciklama_not")
+  muayeneGerekli        Boolean   @default(true) @map("muayene_gerekli")
+  sigortaGerekli        Boolean   @default(true) @map("sigorta_gerekli")
   tekerSayisi           Int?      @map("teker_sayisi")
   aracKategorisi        String?   @map("arac_kategorisi")
   belgelerDosyalar      String?   @map("belgeler_dosyalar") // JSON array of file paths

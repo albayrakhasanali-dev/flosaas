@@ -46,9 +46,19 @@ export async function GET(req: NextRequest) {
     });
   }
 
+  // Filter: only vehicles that require muayene AND are not pasif/yatan
+  const aracFilter = {
+    ...rbacWhere,
+    muayeneGerekli: true,
+    durum: {
+      ...((rbacWhere as Record<string, unknown>).durum as object || {}),
+      durumAdi: { notIn: ["⚫ YATAN", "🟡 BAKIMDA"] },
+    },
+  };
+
   const where = {
     AND: [
-      { arac: rbacWhere },
+      { arac: aracFilter },
       ...filters,
     ],
   };
@@ -73,8 +83,8 @@ export async function GET(req: NextRequest) {
     prisma.t_Muayene.count({ where }),
   ]);
 
-  // Summary stats
-  const allWhere = { arac: rbacWhere };
+  // Summary stats — also filter by muayeneGerekli + not pasif
+  const allWhere = { arac: aracFilter };
   const [toplamMuayene, gecenMuayene, suresiGecmis, yaklasiyor] = await Promise.all([
     prisma.t_Muayene.count({ where: allWhere }),
     prisma.t_Muayene.count({ where: { ...allWhere, sonuc: "gecti" } }),

@@ -34,6 +34,8 @@ interface FormData {
   muayeneBitisTarihi: string;
   sigortaBitisTarihi: string;
   kaskoBitisTarihi: string;
+  muayeneGerekli: boolean;
+  sigortaGerekli: boolean;
   aciklamaNot: string;
   // Computed (read-only)
   muayeneAlarm?: string;
@@ -123,6 +125,8 @@ const emptyForm: FormData = {
   muayeneBitisTarihi: "",
   sigortaBitisTarihi: "",
   kaskoBitisTarihi: "",
+  muayeneGerekli: true,
+  sigortaGerekli: true,
   aciklamaNot: "",
 };
 
@@ -185,6 +189,8 @@ export default function AracFormClient({ aracId }: { aracId: string }) {
           muayeneBitisTarihi: formatDateForInput(aracRes.muayeneBitisTarihi),
           sigortaBitisTarihi: formatDateForInput(aracRes.sigortaBitisTarihi),
           kaskoBitisTarihi: formatDateForInput(aracRes.kaskoBitisTarihi),
+          muayeneGerekli: aracRes.muayeneGerekli !== false,
+          sigortaGerekli: aracRes.sigortaGerekli !== false,
           aciklamaNot: aracRes.aciklamaNot || "",
           muayeneAlarm: aracRes.muayeneAlarm,
           sigortaAlarm: aracRes.sigortaAlarm,
@@ -222,6 +228,8 @@ export default function AracFormClient({ aracId }: { aracId: string }) {
           modelYili: form.modelYili ? Number(form.modelYili) : null,
           guncelKmSaat: form.guncelKmSaat ? Number(form.guncelKmSaat) : null,
           tescilTarihi: form.tescilTarihi || null,
+          muayeneGerekli: form.muayeneGerekli,
+          sigortaGerekli: form.sigortaGerekli,
           // Date fields managed by Takip Modulleri — exclude from save
           muayeneBitisTarihi: undefined,
           sigortaBitisTarihi: undefined,
@@ -499,30 +507,66 @@ export default function AracFormClient({ aracId }: { aracId: string }) {
                   Yeni kayit eklemek icin ilgili sekmeleri kullanin.
                 </p>
               </div>
+              {/* Takip Gereklilikleri */}
+              {!isNew && !isLokasyonSefi && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                  <div className={`flex items-center justify-between p-3 rounded-lg border ${form.muayeneGerekli ? "bg-green-50 border-green-200" : "bg-slate-50 border-slate-200"}`}>
+                    <div>
+                      <p className="text-sm font-medium text-slate-700">Muayene Takibi</p>
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        {form.muayeneGerekli ? "Bu arac muayene takibinde" : "Bu arac icin muayene takibi yapilmiyor"}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => updateField("muayeneGerekli", !form.muayeneGerekli)}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${form.muayeneGerekli ? "bg-green-500" : "bg-slate-300"}`}
+                    >
+                      <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${form.muayeneGerekli ? "translate-x-6" : "translate-x-1"}`} />
+                    </button>
+                  </div>
+                  <div className={`flex items-center justify-between p-3 rounded-lg border ${form.sigortaGerekli ? "bg-green-50 border-green-200" : "bg-slate-50 border-slate-200"}`}>
+                    <div>
+                      <p className="text-sm font-medium text-slate-700">Sigorta Takibi</p>
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        {form.sigortaGerekli ? "Bu arac sigorta takibinde" : "Bu arac icin sigorta takibi yapilmiyor"}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => updateField("sigortaGerekli", !form.sigortaGerekli)}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${form.sigortaGerekli ? "bg-green-500" : "bg-slate-300"}`}
+                    >
+                      <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${form.sigortaGerekli ? "translate-x-6" : "translate-x-1"}`} />
+                    </button>
+                  </div>
+                </div>
+              )}
+
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div>
                   <label className="block text-xs font-medium text-slate-600 mb-1">Tescil Tarihi</label>
                   <input type="date" value={form.tescilTarihi} onChange={(e) => updateField("tescilTarihi", e.target.value)} disabled={isFieldDisabled("tescilTarihi")} className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm disabled:bg-slate-50" />
                 </div>
-                <div>
+                <div className={!form.muayeneGerekli ? "opacity-50" : ""}>
                   <label className="block text-xs font-medium text-slate-600 mb-1">Muayene Bitis Tarihi</label>
                   <input type="date" value={form.muayeneBitisTarihi} disabled className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-slate-50 cursor-not-allowed" />
-                  {form.muayeneAlarm && (
+                  {form.muayeneGerekli && form.muayeneAlarm && (
                     <p className={`text-xs mt-1 ${form.muayeneAlarm.includes("GEÇTİ") ? "text-red-600" : form.muayeneAlarm.includes("YAKLAŞIYOR") ? "text-amber-600" : "text-green-600"}`}>
                       {form.muayeneAlarm} ({form.muayeneKalanGun} gun)
                     </p>
                   )}
                 </div>
-                <div>
+                <div className={!form.sigortaGerekli ? "opacity-50" : ""}>
                   <label className="block text-xs font-medium text-slate-600 mb-1">Sigorta Bitis Tarihi</label>
                   <input type="date" value={form.sigortaBitisTarihi} disabled className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-slate-50 cursor-not-allowed" />
-                  {form.sigortaAlarm && (
+                  {form.sigortaGerekli && form.sigortaAlarm && (
                     <p className={`text-xs mt-1 ${form.sigortaAlarm.includes("GEÇTİ") ? "text-red-600" : form.sigortaAlarm.includes("YAKLAŞIYOR") ? "text-amber-600" : "text-green-600"}`}>
                       {form.sigortaAlarm} ({form.sigortaKalanGun} gun)
                     </p>
                   )}
                 </div>
-                <div>
+                <div className={!form.sigortaGerekli ? "opacity-50" : ""}>
                   <label className="block text-xs font-medium text-slate-600 mb-1">Kasko Bitis Tarihi</label>
                   <input type="date" value={form.kaskoBitisTarihi} disabled className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-slate-50 cursor-not-allowed" />
                 </div>

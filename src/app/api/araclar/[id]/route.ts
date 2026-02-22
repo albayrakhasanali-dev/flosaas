@@ -60,6 +60,8 @@ export async function PUT(
       seyirTakipCihazNo: body.seyirTakipCihazNo,
       hgsEtiketNo: body.hgsEtiketNo,
       tescilTarihi: body.tescilTarihi ? new Date(body.tescilTarihi) : undefined,
+      muayeneGerekli: body.muayeneGerekli !== undefined ? body.muayeneGerekli : undefined,
+      sigortaGerekli: body.sigortaGerekli !== undefined ? body.sigortaGerekli : undefined,
       // muayeneBitisTarihi, sigortaBitisTarihi, kaskoBitisTarihi
       // are managed by Takip Modulleri (Muayene/Sigorta APIs) — not editable here
     };
