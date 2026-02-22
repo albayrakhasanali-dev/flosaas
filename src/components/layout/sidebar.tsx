@@ -13,6 +13,8 @@ import {
   LogOut,
   User,
   FileWarning,
+  ClipboardCheck,
+  Shield,
 } from "lucide-react";
 
 interface MenuItem {
@@ -31,6 +33,8 @@ const menuItems: MenuItem[] = [
   { href: "/filo?filter=hukuki", label: "Hukuki ve Satis", icon: AlertTriangle, badge: "🔴" },
   { href: "/filo?filter=utts_eksik", label: "UTTS Montaj Bekleyenler", icon: Radio, badge: "⚠️" },
   { href: "/trafik-cezalari", label: "Trafik Cezalari", icon: FileWarning, section: "Takip Modulleri", badge: "🚨" },
+  { href: "/muayene-takip", label: "Muayene Takip", icon: ClipboardCheck, section: "Takip Modulleri", badge: "🔍" },
+  { href: "/sigorta-takip", label: "Sigorta Takip", icon: Shield, section: "Takip Modulleri", badge: "🛡️" },
 ];
 
 export default function Sidebar() {

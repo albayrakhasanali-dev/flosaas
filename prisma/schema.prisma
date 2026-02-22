@@ -84,6 +84,8 @@ model T_Arac_Master {
   updatedAt             DateTime  @updatedAt @map("updated_at")
   belgeler              T_Belge[]
   cezalar               T_Ceza[]
+  muayeneler            T_Muayene[]
+  sigortalar            T_Sigorta[]
 
   @@map("t_arac_master")
 }
@@ -146,6 +148,63 @@ model T_Ceza {
   updatedAt       DateTime       @updatedAt @map("updated_at")
 
   @@map("t_ceza")
+}
+
+// ==========================================
+// MUAYENE (ARAÇ MUAYENESİ) TAKİP
+// ==========================================
+
+model T_Muayene {
+  id                    Int            @id @default(autoincrement())
+  aracId                Int            @map("arac_id")
+  arac                  T_Arac_Master  @relation(fields: [aracId], references: [id], onDelete: Cascade)
+  muayeneTarihi         DateTime       @map("muayene_tarihi")
+  gecerlilikBitisTarihi DateTime       @map("gecerlilik_bitis_tarihi")
+  sonuc                 String         // gecti, kaldi
+  muayeneIstasyonu      String?        @map("muayene_istasyonu")
+  muayeneIstasyonuIl    String?        @map("muayene_istasyonu_il")
+  raporNo               String?        @map("rapor_no")
+  muayeneTipi           String         @default("periyodik") @map("muayene_tipi") // periyodik, ek_muayene, ozel
+  muayeneUcreti         Float?         @map("muayene_ucreti")
+  basarisizNeden        String?        @map("basarisiz_neden") // fren, egzoz, aydinlatma, lastik, sasi, diger
+  basarisizDetay        String?        @map("basarisiz_detay")
+  raporDosyaId          Int?           @map("rapor_dosya_id")
+  ekleyenId             Int?           @map("ekleyen_id")
+  notlar                String?
+  createdAt             DateTime       @default(now()) @map("created_at")
+  updatedAt             DateTime       @updatedAt @map("updated_at")
+
+  @@map("t_muayene")
+}
+
+// ==========================================
+// SİGORTA TAKİP
+// ==========================================
+
+model T_Sigorta {
+  id                  Int            @id @default(autoincrement())
+  aracId              Int            @map("arac_id")
+  arac                T_Arac_Master  @relation(fields: [aracId], references: [id], onDelete: Cascade)
+  sigortaTuru         String         @map("sigorta_turu")        // trafik, kasko, imm
+  policeNo            String?        @map("police_no")
+  sigortaSirketi      String?        @map("sigorta_sirketi")
+  acenteAdi           String?        @map("acente_adi")
+  acenteTelefon       String?        @map("acente_telefon")
+  baslangicTarihi     DateTime       @map("baslangic_tarihi")
+  bitisTarihi         DateTime       @map("bitis_tarihi")
+  primTutari          Float?         @map("prim_tutari")
+  odemeSekli          String?        @map("odeme_sekli")         // pesin, taksit
+  taksitSayisi        Int?           @map("taksit_sayisi")
+  odemeDurumu         String         @default("odenmedi") @map("odeme_durumu") // odenmedi, odendi, kismen_odendi
+  odemeTarihi         DateTime?      @map("odeme_tarihi")
+  policeDosyaId       Int?           @map("police_dosya_id")
+  teminatBilgi        String?        @map("teminat_bilgi")
+  ekleyenId           Int?           @map("ekleyen_id")
+  notlar              String?
+  createdAt           DateTime       @default(now()) @map("created_at")
+  updatedAt           DateTime       @updatedAt @map("updated_at")
+
+  @@map("t_sigorta")
 }
 
 // ==========================================
