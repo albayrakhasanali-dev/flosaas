@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { ArrowLeft, Save, Trash2, Upload, FileText, X, Download, Eye } from "lucide-react";
+import { ArrowLeft, Save, Trash2, Upload, FileText, X, Download, Eye, Plus, ExternalLink } from "lucide-react";
 
 interface Lookup {
   sirketler: { id: number; sirketAdi: string }[];
@@ -51,6 +51,40 @@ interface Belge {
   aciklama: string | null;
   createdAt: string;
 }
+
+interface MuayeneRecord {
+  id: number;
+  muayeneTarihi: string;
+  gecerlilikBitisTarihi: string;
+  sonuc: string;
+  muayeneIstasyonu: string | null;
+  raporNo: string | null;
+  muayeneTipi: string;
+  muayeneUcreti: number | null;
+  basarisizNeden: string | null;
+}
+
+interface SigortaRecord {
+  id: number;
+  sigortaTuru: string;
+  policeNo: string | null;
+  sigortaSirketi: string | null;
+  baslangicTarihi: string;
+  bitisTarihi: string;
+  primTutari: number | null;
+  odemeDurumu: string;
+}
+
+const sonucLabels: Record<string, string> = { gecti: "Gecti", kaldi: "Kaldi" };
+const muayeneTipiLabels: Record<string, string> = { periyodik: "Periyodik", ek_muayene: "Ek Muayene", ozel: "Ozel" };
+const sigortaTuruLabels: Record<string, string> = { trafik: "Zorunlu Trafik", kasko: "Kasko", imm: "IMM" };
+const odemeDurumuLabels: Record<string, string> = { odenmedi: "Odenmedi", odendi: "Odendi", kismen_odendi: "Kismen Odendi" };
+
+const formatCurrency = (value: number) =>
+  new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY" }).format(value);
+
+const computeKalanGun = (bitisTarihi: string) =>
+  Math.ceil((new Date(bitisTarihi).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
 
 const belgeTipiLabels: Record<string, string> = {
   ruhsat: "Ruhsat",
@@ -117,6 +151,8 @@ export default function AracFormClient({ aracId }: { aracId: string }) {
   const [belgeler, setBelgeler] = useState<Belge[]>([]);
   const [uploading, setUploading] = useState(false);
   const [uploadBelgeTipi, setUploadBelgeTipi] = useState("ruhsat");
+  const [muayeneler, setMuayeneler] = useState<MuayeneRecord[]>([]);
+  const [sigortalar, setSigortalar] = useState<SigortaRecord[]>([]);
 
   useEffect(() => {
     const load = async () => {
@@ -156,10 +192,16 @@ export default function AracFormClient({ aracId }: { aracId: string }) {
           sigortaKalanGun: aracRes.sigortaKalanGun,
         });
       }
-      // Load belgeler
+      // Load belgeler + muayene/sigorta history
       if (!isNew) {
-        const belgeRes = await fetch(`/api/belgeler?aracId=${aracId}`).then((r) => r.json());
+        const [belgeRes, muayeneRes, sigortaRes] = await Promise.all([
+          fetch(`/api/belgeler?aracId=${aracId}`).then((r) => r.json()),
+          fetch(`/api/muayeneler?aracId=${aracId}&limit=50`).then((r) => r.json()),
+          fetch(`/api/sigortalar?aracId=${aracId}&limit=50`).then((r) => r.json()),
+        ]);
         if (Array.isArray(belgeRes)) setBelgeler(belgeRes);
+        if (muayeneRes?.data) setMuayeneler(muayeneRes.data);
+        if (sigortaRes?.data) setSigortalar(sigortaRes.data);
       }
       setLoading(false);
     };
@@ -180,9 +222,10 @@ export default function AracFormClient({ aracId }: { aracId: string }) {
           modelYili: form.modelYili ? Number(form.modelYili) : null,
           guncelKmSaat: form.guncelKmSaat ? Number(form.guncelKmSaat) : null,
           tescilTarihi: form.tescilTarihi || null,
-          muayeneBitisTarihi: form.muayeneBitisTarihi || null,
-          sigortaBitisTarihi: form.sigortaBitisTarihi || null,
-          kaskoBitisTarihi: form.kaskoBitisTarihi || null,
+          // Date fields managed by Takip Modulleri — exclude from save
+          muayeneBitisTarihi: undefined,
+          sigortaBitisTarihi: undefined,
+          kaskoBitisTarihi: undefined,
         }),
       });
       if (res.ok) {
@@ -266,7 +309,7 @@ export default function AracFormClient({ aracId }: { aracId: string }) {
     );
   }
 
-  const tabs = ["Kimlik Bilgileri", "Operasyon ve Konum", "Evrak ve Tarihler"];
+  const tabs = ["Kimlik Bilgileri", "Operasyon ve Konum", "Evrak ve Tarihler", "Muayene Gecmisi", "Sigorta Gecmisi"];
 
   return (
     <div className="space-y-4 max-w-5xl">
@@ -449,7 +492,13 @@ export default function AracFormClient({ aracId }: { aracId: string }) {
           {/* Sekme 3: Evrak ve Tarihler */}
           {activeTab === 2 && (
             <div className="space-y-6">
-              {/* Tarihler */}
+              {/* Tarihler - read-only, managed by tracking modules */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-2">
+                <p className="text-xs text-blue-700">
+                  Muayene, sigorta ve kasko tarihleri <strong>Takip Modulleri</strong> uzerinden otomatik guncellenir.
+                  Yeni kayit eklemek icin ilgili sekmeleri kullanin.
+                </p>
+              </div>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div>
                   <label className="block text-xs font-medium text-slate-600 mb-1">Tescil Tarihi</label>
@@ -457,7 +506,7 @@ export default function AracFormClient({ aracId }: { aracId: string }) {
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-slate-600 mb-1">Muayene Bitis Tarihi</label>
-                  <input type="date" value={form.muayeneBitisTarihi} onChange={(e) => updateField("muayeneBitisTarihi", e.target.value)} disabled={isFieldDisabled("muayeneBitisTarihi")} className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm disabled:bg-slate-50" />
+                  <input type="date" value={form.muayeneBitisTarihi} disabled className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-slate-50 cursor-not-allowed" />
                   {form.muayeneAlarm && (
                     <p className={`text-xs mt-1 ${form.muayeneAlarm.includes("GEÇTİ") ? "text-red-600" : form.muayeneAlarm.includes("YAKLAŞIYOR") ? "text-amber-600" : "text-green-600"}`}>
                       {form.muayeneAlarm} ({form.muayeneKalanGun} gun)
@@ -466,7 +515,7 @@ export default function AracFormClient({ aracId }: { aracId: string }) {
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-slate-600 mb-1">Sigorta Bitis Tarihi</label>
-                  <input type="date" value={form.sigortaBitisTarihi} onChange={(e) => updateField("sigortaBitisTarihi", e.target.value)} disabled={isFieldDisabled("sigortaBitisTarihi")} className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm disabled:bg-slate-50" />
+                  <input type="date" value={form.sigortaBitisTarihi} disabled className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-slate-50 cursor-not-allowed" />
                   {form.sigortaAlarm && (
                     <p className={`text-xs mt-1 ${form.sigortaAlarm.includes("GEÇTİ") ? "text-red-600" : form.sigortaAlarm.includes("YAKLAŞIYOR") ? "text-amber-600" : "text-green-600"}`}>
                       {form.sigortaAlarm} ({form.sigortaKalanGun} gun)
@@ -475,7 +524,7 @@ export default function AracFormClient({ aracId }: { aracId: string }) {
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-slate-600 mb-1">Kasko Bitis Tarihi</label>
-                  <input type="date" value={form.kaskoBitisTarihi} onChange={(e) => updateField("kaskoBitisTarihi", e.target.value)} disabled={isFieldDisabled("kaskoBitisTarihi")} className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm disabled:bg-slate-50" />
+                  <input type="date" value={form.kaskoBitisTarihi} disabled className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-slate-50 cursor-not-allowed" />
                 </div>
               </div>
 
@@ -578,6 +627,158 @@ export default function AracFormClient({ aracId }: { aracId: string }) {
                       ))}
                     </div>
                   )}
+                </div>
+              )}
+            </div>
+          )}
+          {/* Sekme 4: Muayene Gecmisi */}
+          {activeTab === 3 && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-semibold text-slate-700">Muayene Gecmisi ({muayeneler.length} kayit)</h3>
+                <button
+                  onClick={() => router.push("/muayene/new")}
+                  className="flex items-center gap-1.5 bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-lg text-xs font-medium transition-colors"
+                >
+                  <Plus size={14} />
+                  Yeni Muayene Ekle
+                </button>
+              </div>
+              {muayeneler.length === 0 ? (
+                <div className="text-center py-8 text-slate-400 text-sm">
+                  Bu araca ait muayene kaydi yok
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="data-grid">
+                    <thead>
+                      <tr>
+                        <th>Muayene Tarihi</th>
+                        <th>Gecerlilik Bitis</th>
+                        <th>Kalan Gun</th>
+                        <th>Sonuc</th>
+                        <th>Istasyon</th>
+                        <th>Tipi</th>
+                        <th>Rapor No</th>
+                        <th></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {muayeneler.map((m) => {
+                        const kalanGun = computeKalanGun(m.gecerlilikBitisTarihi);
+                        return (
+                          <tr
+                            key={m.id}
+                            className={`cursor-pointer ${
+                              kalanGun < 0 && m.sonuc === "gecti" ? "bg-red-50" :
+                              kalanGun <= 30 && kalanGun >= 0 && m.sonuc === "gecti" ? "bg-amber-50" : ""
+                            }`}
+                            onClick={() => router.push(`/muayene/${m.id}`)}
+                          >
+                            <td className="text-xs">{new Date(m.muayeneTarihi).toLocaleDateString("tr-TR")}</td>
+                            <td className="text-xs">{new Date(m.gecerlilikBitisTarihi).toLocaleDateString("tr-TR")}</td>
+                            <td>
+                              <span className={`text-xs font-semibold ${kalanGun < 0 ? "text-red-600" : kalanGun <= 30 ? "text-amber-600" : "text-green-600"}`}>
+                                {kalanGun < 0 ? `${Math.abs(kalanGun)}g gecmis` : `${kalanGun}g`}
+                              </span>
+                            </td>
+                            <td>
+                              <span className={`badge ${m.sonuc === "gecti" ? "badge-success" : "badge-danger"}`}>
+                                {sonucLabels[m.sonuc] || m.sonuc}
+                              </span>
+                            </td>
+                            <td className="text-xs">{m.muayeneIstasyonu || "-"}</td>
+                            <td>
+                              <span className="badge badge-neutral text-xs">{muayeneTipiLabels[m.muayeneTipi] || m.muayeneTipi}</span>
+                            </td>
+                            <td className="text-xs font-mono">{m.raporNo || "-"}</td>
+                            <td>
+                              <button className="text-slate-400 hover:text-blue-600">
+                                <ExternalLink size={14} />
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Sekme 5: Sigorta Gecmisi */}
+          {activeTab === 4 && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-semibold text-slate-700">Sigorta Gecmisi ({sigortalar.length} kayit)</h3>
+                <button
+                  onClick={() => router.push("/sigorta/new")}
+                  className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-xs font-medium transition-colors"
+                >
+                  <Plus size={14} />
+                  Yeni Police Ekle
+                </button>
+              </div>
+              {sigortalar.length === 0 ? (
+                <div className="text-center py-8 text-slate-400 text-sm">
+                  Bu araca ait sigorta kaydi yok
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="data-grid">
+                    <thead>
+                      <tr>
+                        <th>Sigorta Turu</th>
+                        <th>Police No</th>
+                        <th>Sigorta Sirketi</th>
+                        <th>Baslangic</th>
+                        <th>Bitis</th>
+                        <th>Kalan Gun</th>
+                        <th>Prim</th>
+                        <th>Odeme</th>
+                        <th></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {sigortalar.map((s) => {
+                        const kalanGun = computeKalanGun(s.bitisTarihi);
+                        return (
+                          <tr
+                            key={s.id}
+                            className={`cursor-pointer ${kalanGun < 0 ? "bg-red-50" : kalanGun <= 30 ? "bg-amber-50" : ""}`}
+                            onClick={() => router.push(`/sigorta/${s.id}`)}
+                          >
+                            <td>
+                              <span className={`badge text-xs ${s.sigortaTuru === "trafik" ? "badge-info" : s.sigortaTuru === "kasko" ? "badge-purple" : "badge-neutral"}`}>
+                                {sigortaTuruLabels[s.sigortaTuru] || s.sigortaTuru}
+                              </span>
+                            </td>
+                            <td className="text-xs font-mono">{s.policeNo || "-"}</td>
+                            <td className="text-xs">{s.sigortaSirketi || "-"}</td>
+                            <td className="text-xs">{new Date(s.baslangicTarihi).toLocaleDateString("tr-TR")}</td>
+                            <td className="text-xs">{new Date(s.bitisTarihi).toLocaleDateString("tr-TR")}</td>
+                            <td>
+                              <span className={`text-xs font-semibold ${kalanGun < 0 ? "text-red-600" : kalanGun <= 30 ? "text-amber-600" : "text-green-600"}`}>
+                                {kalanGun < 0 ? `${Math.abs(kalanGun)}g gecmis` : `${kalanGun}g`}
+                              </span>
+                            </td>
+                            <td className="text-sm font-semibold">{s.primTutari ? formatCurrency(s.primTutari) : "-"}</td>
+                            <td>
+                              <span className={`badge ${s.odemeDurumu === "odendi" ? "badge-success" : s.odemeDurumu === "kismen_odendi" ? "badge-warning" : "badge-danger"}`}>
+                                {odemeDurumuLabels[s.odemeDurumu] || s.odemeDurumu}
+                              </span>
+                            </td>
+                            <td>
+                              <button className="text-slate-400 hover:text-blue-600">
+                                <ExternalLink size={14} />
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
                 </div>
               )}
             </div>

@@ -60,9 +60,8 @@ export async function PUT(
       seyirTakipCihazNo: body.seyirTakipCihazNo,
       hgsEtiketNo: body.hgsEtiketNo,
       tescilTarihi: body.tescilTarihi ? new Date(body.tescilTarihi) : undefined,
-      muayeneBitisTarihi: body.muayeneBitisTarihi ? new Date(body.muayeneBitisTarihi) : undefined,
-      sigortaBitisTarihi: body.sigortaBitisTarihi ? new Date(body.sigortaBitisTarihi) : undefined,
-      kaskoBitisTarihi: body.kaskoBitisTarihi ? new Date(body.kaskoBitisTarihi) : undefined,
+      // muayeneBitisTarihi, sigortaBitisTarihi, kaskoBitisTarihi
+      // are managed by Takip Modulleri (Muayene/Sigorta APIs) — not editable here
     };
     // Remove undefined values
     Object.keys(updateData).forEach((k) => updateData[k] === undefined && delete updateData[k]);
