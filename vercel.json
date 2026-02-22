@@ -1,0 +1,12 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron?job=weekly_report&secret=flosaas-cron-secret",
+      "schedule": "0 8 * * 1"
+    },
+    {
+      "path": "/api/cron?job=expired_vehicles&secret=flosaas-cron-secret",
+      "schedule": "0 7 * * *"
+    }
+  ]
+}
