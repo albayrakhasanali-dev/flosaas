@@ -15,6 +15,7 @@ import {
   FileWarning,
   ClipboardCheck,
   Shield,
+  ListTodo,
 } from "lucide-react";
 
 interface MenuItem {
@@ -35,6 +36,7 @@ const menuItems: MenuItem[] = [
   { href: "/trafik-cezalari", label: "Trafik Cezalari", icon: FileWarning, section: "Takip Modulleri", badge: "🚨" },
   { href: "/muayene-takip", label: "Muayene Takip", icon: ClipboardCheck, section: "Takip Modulleri", badge: "🔍" },
   { href: "/sigorta-takip", label: "Sigorta Takip", icon: Shield, section: "Takip Modulleri", badge: "🛡️" },
+  { href: "/yapilacaklar", label: "Yapilacaklar", icon: ListTodo, section: "Takip Modulleri", badge: "📋" },
 ];
 
 export default function Sidebar() {
