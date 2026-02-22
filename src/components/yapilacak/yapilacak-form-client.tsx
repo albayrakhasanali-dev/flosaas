@@ -126,7 +126,7 @@ export default function YapilacakFormClient({ yapilacakId }: { yapilacakId?: str
   useEffect(() => {
     Promise.all([
       fetch("/api/araclar?limit=500").then((r) => r.json()),
-      fetch("/api/kullanicilar").then((r) => r.json()),
+      fetch("/api/kullanicilar?mode=simple").then((r) => r.json()),
     ]).then(([aracRes, kullaniciRes]) => {
       if (aracRes?.data) setAraclar(aracRes.data);
       if (Array.isArray(kullaniciRes)) setKullanicilar(kullaniciRes);

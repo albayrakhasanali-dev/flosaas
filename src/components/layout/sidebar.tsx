@@ -16,6 +16,7 @@ import {
   ClipboardCheck,
   Shield,
   ListTodo,
+  Users,
 } from "lucide-react";
 
 interface MenuItem {
@@ -24,6 +25,7 @@ interface MenuItem {
   icon: React.ComponentType<{ size?: number }>;
   badge?: string;
   section?: string;
+  requiredRole?: string; // minimum role needed: "super_admin" or "sirket_yoneticisi"
 }
 
 const menuItems: MenuItem[] = [
@@ -37,6 +39,7 @@ const menuItems: MenuItem[] = [
   { href: "/muayene-takip", label: "Muayene Takip", icon: ClipboardCheck, section: "Takip Modulleri", badge: "🔍" },
   { href: "/sigorta-takip", label: "Sigorta Takip", icon: Shield, section: "Takip Modulleri", badge: "🛡️" },
   { href: "/yapilacaklar", label: "Yapilacaklar", icon: ListTodo, section: "Takip Modulleri", badge: "📋" },
+  { href: "/kullanicilar", label: "Kullanici Yonetimi", icon: Users, section: "Yonetim", badge: "👥", requiredRole: "sirket_yoneticisi" },
 ];
 
 export default function Sidebar() {
@@ -47,6 +50,20 @@ export default function Sidebar() {
     super_admin: "Super Admin",
     sirket_yoneticisi: "Sirket Yoneticisi",
     lokasyon_sefi: "Lokasyon Sefi",
+  };
+
+  const userRole = (session?.user as Record<string, unknown>)?.role as string;
+
+  // Role hierarchy check: super_admin >= sirket_yoneticisi >= lokasyon_sefi
+  const roleHierarchy: Record<string, number> = {
+    super_admin: 3,
+    sirket_yoneticisi: 2,
+    lokasyon_sefi: 1,
+  };
+
+  const hasRequiredRole = (requiredRole?: string) => {
+    if (!requiredRole) return true;
+    return (roleHierarchy[userRole] || 0) >= (roleHierarchy[requiredRole] || 0);
   };
 
   return (
@@ -61,7 +78,9 @@ export default function Sidebar() {
 
       {/* Navigation */}
       <nav className="flex-1 py-4 overflow-y-auto">
-        {menuItems.map((item, index) => {
+        {(() => {
+          const visibleItems = menuItems.filter((item) => hasRequiredRole(item.requiredRole));
+          return visibleItems.map((item, index) => {
           const Icon = item.icon;
           const isActive =
             item.href === "/"
@@ -72,7 +91,7 @@ export default function Sidebar() {
               : pathname.startsWith(item.href.split("?")[0]);
 
           // Show section header
-          const showSection = item.section && (index === 0 || menuItems[index - 1]?.section !== item.section);
+          const showSection = item.section && (index === 0 || visibleItems[index - 1]?.section !== item.section);
 
           return (
             <div key={item.href}>
@@ -95,7 +114,8 @@ export default function Sidebar() {
               </Link>
             </div>
           );
-        })}
+        });
+        })()}
       </nav>
 
       {/* User Section */}
