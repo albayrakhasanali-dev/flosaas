@@ -7,6 +7,7 @@ import { ArrowLeft, Save, Trash2, Upload, X } from "lucide-react";
 interface AracOption {
   id: number;
   plaka: string;
+  ruhsatSeriNo?: string | null;
 }
 
 interface SigortaData {
@@ -26,6 +27,7 @@ interface SigortaData {
   teminatBilgi: string;
   notlar: string;
   plaka: string;
+  ruhsatSeriNo: string;
 }
 
 const emptySigorta: SigortaData = {
@@ -45,6 +47,7 @@ const emptySigorta: SigortaData = {
   teminatBilgi: "",
   notlar: "",
   plaka: "",
+  ruhsatSeriNo: "",
 };
 
 const sigortaTurleri = [
@@ -88,9 +91,10 @@ export default function SigortaFormClient({ sigortaId }: { sigortaId?: string })
       .then((r) => r.json())
       .then((data) => {
         setAraclar(
-          data.data.map((a: { id: number; plaka: string }) => ({
+          data.data.map((a: { id: number; plaka: string; ruhsatSeriNo?: string | null }) => ({
             id: a.id,
             plaka: a.plaka,
+            ruhsatSeriNo: a.ruhsatSeriNo,
           }))
         );
       })
@@ -120,6 +124,7 @@ export default function SigortaFormClient({ sigortaId }: { sigortaId?: string })
             teminatBilgi: data.teminatBilgi || "",
             notlar: data.notlar || "",
             plaka: data.arac?.plaka || "",
+            ruhsatSeriNo: data.arac?.ruhsatSeriNo || "",
           });
           setLoading(false);
         })
@@ -131,7 +136,7 @@ export default function SigortaFormClient({ sigortaId }: { sigortaId?: string })
     setForm((prev) => ({ ...prev, [field]: value }));
     if (field === "aracId" && value) {
       const selected = araclar.find((a) => String(a.id) === value);
-      if (selected) setForm((prev) => ({ ...prev, [field]: value, plaka: selected.plaka }));
+      if (selected) setForm((prev) => ({ ...prev, [field]: value, plaka: selected.plaka, ruhsatSeriNo: selected.ruhsatSeriNo || "" }));
     }
   };
 
@@ -395,6 +400,17 @@ export default function SigortaFormClient({ sigortaId }: { sigortaId?: string })
                 value={form.bitisTarihi}
                 onChange={(e) => handleChange("bitisTarihi", e.target.value)}
                 className={inputClass}
+              />
+            </div>
+
+            <div>
+              <label className={labelClass}>Ruhsat Seri No</label>
+              <input
+                type="text"
+                value={form.ruhsatSeriNo}
+                disabled
+                className={`${inputClass} bg-slate-50 cursor-not-allowed ${form.ruhsatSeriNo ? "text-slate-700 font-medium" : "text-slate-400 italic"}`}
+                placeholder="Arac secildiginde otomatik gelir"
               />
             </div>
 

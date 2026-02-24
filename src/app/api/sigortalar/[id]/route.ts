@@ -18,6 +18,7 @@ export async function GET(
         select: {
           id: true,
           plaka: true,
+          ruhsatSeriNo: true,
           sirket: { select: { sirketAdi: true } },
           lokasyon: { select: { lokasyonAdi: true } },
           markaModelTicariAdi: true,
