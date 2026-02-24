@@ -15,7 +15,9 @@ import {
   Clock,
   TrendingUp,
   AlertTriangle,
+  Download,
 } from "lucide-react";
+import { exportToExcel } from "@/lib/excel-export";
 
 interface SigortaArac {
   id: number;
@@ -82,6 +84,7 @@ export default function SigortaTakipClient() {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [showFilters, setShowFilters] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
   // Filters
   const [fSigortaTuru, setFSigortaTuru] = useState("");
@@ -120,6 +123,57 @@ export default function SigortaTakipClient() {
     setFDurum("");
   };
 
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      const params = new URLSearchParams();
+      if (search) params.set("search", search);
+      params.set("page", "1");
+      params.set("limit", "5000");
+      if (fSigortaTuru) params.set("sigortaTuru", fSigortaTuru);
+      if (fOdemeDurumu) params.set("odemeDurumu", fOdemeDurumu);
+      if (fDurum) params.set("durum", fDurum);
+
+      const res = await fetch(`/api/sigortalar?${params}`);
+      const json = await res.json();
+      const rows = json.data.map((s: Sigorta) => ({
+        plaka: s.arac.plaka,
+        sirket: s.arac.sirket?.sirketAdi || "",
+        lokasyon: s.arac.lokasyon?.lokasyonAdi || "",
+        sigortaTuru: sigortaTuruLabels[s.sigortaTuru] || s.sigortaTuru,
+        policeNo: s.policeNo || "",
+        sigortaSirketi: s.sigortaSirketi || "",
+        acenteAdi: s.acenteAdi || "",
+        baslangicTarihi: formatDate(s.baslangicTarihi),
+        bitisTarihi: formatDate(s.bitisTarihi),
+        kalanGun: computeKalanGun(s.bitisTarihi),
+        primTutari: s.primTutari || "",
+        odemeDurumu: odemeDurumuLabels[s.odemeDurumu] || s.odemeDurumu,
+        odemeSekli: s.odemeSekli || "",
+      }));
+
+      exportToExcel(rows, [
+        { header: "Plaka", key: "plaka", width: 14 },
+        { header: "Sirket", key: "sirket", width: 18 },
+        { header: "Lokasyon", key: "lokasyon", width: 16 },
+        { header: "Sigorta Turu", key: "sigortaTuru", width: 16 },
+        { header: "Police No", key: "policeNo", width: 18 },
+        { header: "Sigorta Sirketi", key: "sigortaSirketi", width: 20 },
+        { header: "Acente", key: "acenteAdi", width: 18 },
+        { header: "Baslangic Tarihi", key: "baslangicTarihi", width: 16 },
+        { header: "Bitis Tarihi", key: "bitisTarihi", width: 16 },
+        { header: "Kalan Gun", key: "kalanGun", width: 12 },
+        { header: "Prim Tutari", key: "primTutari", width: 14 },
+        { header: "Odeme Durumu", key: "odemeDurumu", width: 14 },
+        { header: "Odeme Sekli", key: "odemeSekli", width: 14 },
+      ], "Sigorta_Takip");
+    } catch (error) {
+      console.error("Excel export error:", error);
+    } finally {
+      setExporting(false);
+    }
+  };
+
   return (
     <div className="space-y-4">
       {/* Header */}
@@ -130,13 +184,23 @@ export default function SigortaTakipClient() {
             {data ? `${data.pagination.total} police kaydi` : "Yukleniyor..."}
           </p>
         </div>
-        <button
-          onClick={() => router.push("/sigorta/new")}
-          className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-lg text-sm font-medium transition-colors"
-        >
-          <Plus size={16} />
-          Yeni Police Ekle
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleExport}
+            disabled={exporting || !data?.data.length}
+            className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white px-4 py-2.5 rounded-lg text-sm font-medium transition-colors"
+          >
+            <Download size={16} />
+            {exporting ? "Indiriliyor..." : "Excel Indir"}
+          </button>
+          <button
+            onClick={() => router.push("/sigorta/new")}
+            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-lg text-sm font-medium transition-colors"
+          >
+            <Plus size={16} />
+            Yeni Police Ekle
+          </button>
+        </div>
       </div>
 
       {/* KPI Cards */}

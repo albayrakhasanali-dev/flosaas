@@ -15,7 +15,9 @@ import {
   Clock,
   TrendingUp,
   AlertTriangle,
+  Download,
 } from "lucide-react";
+import { exportToExcel } from "@/lib/excel-export";
 
 interface MuayeneArac {
   id: number;
@@ -111,10 +113,63 @@ export default function MuayeneTakipClient() {
     fetchData();
   }, [fetchData]);
 
+  const [exporting, setExporting] = useState(false);
+
   const clearFilters = () => {
     setFSonuc("");
     setFMuayeneTipi("");
     setFDurum("");
+  };
+
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      const params = new URLSearchParams();
+      if (search) params.set("search", search);
+      params.set("limit", "5000");
+      if (fSonuc) params.set("sonuc", fSonuc);
+      if (fMuayeneTipi) params.set("muayeneTipi", fMuayeneTipi);
+      if (fDurum) params.set("durum", fDurum);
+
+      const res = await fetch(`/api/muayeneler?${params}`);
+      const json = await res.json();
+
+      const rows = (json.data || []).map((m: Muayene) => {
+        const kalanGun = computeKalanGun(m.gecerlilikBitisTarihi);
+        return {
+          plaka: m.arac.plaka,
+          sirket: m.arac.sirket?.sirketAdi || "",
+          lokasyon: m.arac.lokasyon?.lokasyonAdi || "",
+          muayeneTarihi: formatDate(m.muayeneTarihi),
+          gecerlilikBitis: formatDate(m.gecerlilikBitisTarihi),
+          kalanGun: kalanGun < 0 ? `${Math.abs(kalanGun)} gun gecmis` : `${kalanGun} gun`,
+          sonuc: sonucLabels[m.sonuc] || m.sonuc,
+          tipi: muayeneTipiLabels[m.muayeneTipi] || m.muayeneTipi,
+          istasyon: m.muayeneIstasyonu || "",
+          il: m.muayeneIstasyonuIl || "",
+          raporNo: m.raporNo || "",
+          ucret: m.muayeneUcreti || "",
+        };
+      });
+
+      exportToExcel(rows, [
+        { header: "Plaka", key: "plaka", width: 14 },
+        { header: "Sirket", key: "sirket", width: 25 },
+        { header: "Lokasyon", key: "lokasyon", width: 25 },
+        { header: "Muayene Tarihi", key: "muayeneTarihi", width: 14 },
+        { header: "Gecerlilik Bitis", key: "gecerlilikBitis", width: 14 },
+        { header: "Kalan Gun", key: "kalanGun", width: 16 },
+        { header: "Sonuc", key: "sonuc", width: 10 },
+        { header: "Tipi", key: "tipi", width: 14 },
+        { header: "Istasyon", key: "istasyon", width: 25 },
+        { header: "Il", key: "il", width: 12 },
+        { header: "Rapor No", key: "raporNo", width: 14 },
+        { header: "Ucret (TL)", key: "ucret", width: 12 },
+      ], `Muayene_Takip_${new Date().toISOString().split("T")[0]}`);
+    } catch {
+      alert("Excel export sirasinda hata olustu");
+    }
+    setExporting(false);
   };
 
   return (
@@ -127,13 +182,23 @@ export default function MuayeneTakipClient() {
             {data ? `${data.pagination.total} muayene kaydi` : "Yukleniyor..."}
           </p>
         </div>
-        <button
-          onClick={() => router.push("/muayene/new")}
-          className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2.5 rounded-lg text-sm font-medium transition-colors"
-        >
-          <Plus size={16} />
-          Yeni Muayene Ekle
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleExport}
+            disabled={exporting || !data?.data.length}
+            className="flex items-center gap-2 px-4 py-2.5 border border-green-300 text-green-700 bg-green-50 hover:bg-green-100 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+          >
+            <Download size={16} />
+            {exporting ? "Hazirlaniyor..." : "Excel Indir"}
+          </button>
+          <button
+            onClick={() => router.push("/muayene/new")}
+            className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2.5 rounded-lg text-sm font-medium transition-colors"
+          >
+            <Plus size={16} />
+            Yeni Muayene Ekle
+          </button>
+        </div>
       </div>
 
       {/* KPI Cards */}
