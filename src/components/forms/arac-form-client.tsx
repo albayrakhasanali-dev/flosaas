@@ -159,6 +159,11 @@ export default function AracFormClient({ aracId }: { aracId: string }) {
   const [uploadBelgeTipi, setUploadBelgeTipi] = useState("ruhsat");
   const [muayeneler, setMuayeneler] = useState<MuayeneRecord[]>([]);
   const [sigortalar, setSigortalar] = useState<SigortaRecord[]>([]);
+  const [showNewLokasyon, setShowNewLokasyon] = useState(false);
+  const [showNewSirket, setShowNewSirket] = useState(false);
+  const [newLokasyonAdi, setNewLokasyonAdi] = useState("");
+  const [newSirketAdi, setNewSirketAdi] = useState("");
+  const [addingLookup, setAddingLookup] = useState(false);
 
   useEffect(() => {
     const load = async () => {
@@ -266,6 +271,64 @@ export default function AracFormClient({ aracId }: { aracId: string }) {
 
   const updateField = (field: string, value: unknown) => {
     setForm((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleAddLokasyon = async () => {
+    if (!newLokasyonAdi.trim()) return;
+    setAddingLookup(true);
+    try {
+      const res = await fetch("/api/lokasyonlar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ lokasyonAdi: newLokasyonAdi.trim() }),
+      });
+      if (res.ok) {
+        const created = await res.json();
+        setLookups((prev) => prev ? {
+          ...prev,
+          lokasyonlar: [...prev.lokasyonlar, { id: created.id, lokasyonAdi: created.lokasyonAdi }].sort((a, b) => a.lokasyonAdi.localeCompare(b.lokasyonAdi)),
+        } : prev);
+        updateField("lokasyonId", created.id);
+        setNewLokasyonAdi("");
+        setShowNewLokasyon(false);
+        setMessage({ type: "success", text: `"${created.lokasyonAdi}" lokasyonu eklendi` });
+      } else {
+        const err = await res.json();
+        setMessage({ type: "error", text: err.error || "Lokasyon eklenemedi" });
+      }
+    } catch {
+      setMessage({ type: "error", text: "Baglanti hatasi" });
+    }
+    setAddingLookup(false);
+  };
+
+  const handleAddSirket = async () => {
+    if (!newSirketAdi.trim()) return;
+    setAddingLookup(true);
+    try {
+      const res = await fetch("/api/sirketler", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sirketAdi: newSirketAdi.trim() }),
+      });
+      if (res.ok) {
+        const created = await res.json();
+        setLookups((prev) => prev ? {
+          ...prev,
+          sirketler: [...prev.sirketler, { id: created.id, sirketAdi: created.sirketAdi }].sort((a, b) => a.sirketAdi.localeCompare(b.sirketAdi)),
+        } : prev);
+        updateField("sirketId", created.id);
+        setNewSirketAdi("");
+        setShowNewSirket(false);
+        setMessage({ type: "success", text: `"${created.sirketAdi}" sirketi eklendi` });
+      } else {
+        const err = await res.json();
+        setMessage({ type: "error", text: err.error || "Sirket eklenemedi" });
+      }
+    } catch {
+      setMessage({ type: "error", text: "Baglanti hatasi" });
+    }
+    setAddingLookup(false);
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -411,10 +474,54 @@ export default function AracFormClient({ aracId }: { aracId: string }) {
               </div>
               <div>
                 <label className="block text-xs font-medium text-slate-600 mb-1">Sirket</label>
-                <select value={form.sirketId || ""} onChange={(e) => updateField("sirketId", e.target.value ? Number(e.target.value) : null)} disabled={isFieldDisabled("sirketId")} className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm disabled:bg-slate-50">
-                  <option value="">Seciniz</option>
-                  {lookups?.sirketler.map((s) => <option key={s.id} value={s.id}>{s.sirketAdi}</option>)}
-                </select>
+                <div className="flex gap-1.5">
+                  <select value={form.sirketId || ""} onChange={(e) => updateField("sirketId", e.target.value ? Number(e.target.value) : null)} disabled={isFieldDisabled("sirketId")} className="flex-1 px-3 py-2 border border-slate-300 rounded-lg text-sm disabled:bg-slate-50">
+                    <option value="">Seciniz</option>
+                    {lookups?.sirketler.map((s) => <option key={s.id} value={s.id}>{s.sirketAdi}</option>)}
+                  </select>
+                  {!isLokasyonSefi && (
+                    <button
+                      type="button"
+                      onClick={() => setShowNewSirket(true)}
+                      className="px-2.5 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors flex-shrink-0"
+                      title="Yeni Sirket Ekle"
+                    >
+                      <Plus size={16} />
+                    </button>
+                  )}
+                </div>
+                {showNewSirket && (
+                  <div className="mt-2 p-3 bg-green-50 border border-green-200 rounded-lg">
+                    <p className="text-xs font-medium text-green-800 mb-2">Yeni Sirket Ekle</p>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={newSirketAdi}
+                        onChange={(e) => setNewSirketAdi(e.target.value)}
+                        onKeyDown={(e) => e.key === "Enter" && handleAddSirket()}
+                        placeholder="Sirket adi"
+                        className="flex-1 px-3 py-1.5 border border-green-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-400"
+                        autoFocus
+                        disabled={addingLookup}
+                      />
+                      <button
+                        type="button"
+                        onClick={handleAddSirket}
+                        disabled={addingLookup || !newSirketAdi.trim()}
+                        className="px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded-lg text-xs font-medium disabled:opacity-50"
+                      >
+                        {addingLookup ? "..." : "Ekle"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { setShowNewSirket(false); setNewSirketAdi(""); }}
+                        className="px-2 py-1.5 text-slate-500 hover:text-slate-700"
+                      >
+                        <X size={14} />
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
               <div>
                 <label className="block text-xs font-medium text-slate-600 mb-1">Mulkiyet Tipi</label>
@@ -464,10 +571,54 @@ export default function AracFormClient({ aracId }: { aracId: string }) {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               <div>
                 <label className="block text-xs font-medium text-slate-600 mb-1">Lokasyon</label>
-                <select value={form.lokasyonId || ""} onChange={(e) => updateField("lokasyonId", e.target.value ? Number(e.target.value) : null)} disabled={isFieldDisabled("lokasyonId")} className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm disabled:bg-slate-50">
-                  <option value="">Seciniz</option>
-                  {lookups?.lokasyonlar.map((l) => <option key={l.id} value={l.id}>{l.lokasyonAdi}</option>)}
-                </select>
+                <div className="flex gap-1.5">
+                  <select value={form.lokasyonId || ""} onChange={(e) => updateField("lokasyonId", e.target.value ? Number(e.target.value) : null)} disabled={isFieldDisabled("lokasyonId")} className="flex-1 px-3 py-2 border border-slate-300 rounded-lg text-sm disabled:bg-slate-50">
+                    <option value="">Seciniz</option>
+                    {lookups?.lokasyonlar.map((l) => <option key={l.id} value={l.id}>{l.lokasyonAdi}</option>)}
+                  </select>
+                  {!isLokasyonSefi && (
+                    <button
+                      type="button"
+                      onClick={() => setShowNewLokasyon(true)}
+                      className="px-2.5 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors flex-shrink-0"
+                      title="Yeni Lokasyon Ekle"
+                    >
+                      <Plus size={16} />
+                    </button>
+                  )}
+                </div>
+                {showNewLokasyon && (
+                  <div className="mt-2 p-3 bg-green-50 border border-green-200 rounded-lg">
+                    <p className="text-xs font-medium text-green-800 mb-2">Yeni Lokasyon Ekle</p>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={newLokasyonAdi}
+                        onChange={(e) => setNewLokasyonAdi(e.target.value)}
+                        onKeyDown={(e) => e.key === "Enter" && handleAddLokasyon()}
+                        placeholder="Lokasyon adi"
+                        className="flex-1 px-3 py-1.5 border border-green-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-400"
+                        autoFocus
+                        disabled={addingLookup}
+                      />
+                      <button
+                        type="button"
+                        onClick={handleAddLokasyon}
+                        disabled={addingLookup || !newLokasyonAdi.trim()}
+                        className="px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded-lg text-xs font-medium disabled:opacity-50"
+                      >
+                        {addingLookup ? "..." : "Ekle"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { setShowNewLokasyon(false); setNewLokasyonAdi(""); }}
+                        className="px-2 py-1.5 text-slate-500 hover:text-slate-700"
+                      >
+                        <X size={14} />
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
               <div>
                 <label className="block text-xs font-medium text-slate-600 mb-1">Zimmet / Masraf Merkezi</label>
