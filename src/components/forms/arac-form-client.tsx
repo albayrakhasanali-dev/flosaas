@@ -23,6 +23,7 @@ interface FormData {
   kapasite: string;
   aracMarka: string;
   kasaMarka: string;
+  ruhsatSeriNo: string;
   sasiNo: string;
   motorNo: string;
   guncelKmSaat: number | null;
@@ -115,6 +116,7 @@ const emptyForm: FormData = {
   kapasite: "",
   aracMarka: "",
   kasaMarka: "",
+  ruhsatSeriNo: "",
   sasiNo: "",
   motorNo: "",
   guncelKmSaat: null,
@@ -185,6 +187,7 @@ export default function AracFormClient({ aracId }: { aracId: string }) {
           kapasite: aracRes.kapasite || "",
           aracMarka: aracRes.aracMarka || "",
           kasaMarka: aracRes.kasaMarka || "",
+          ruhsatSeriNo: aracRes.ruhsatSeriNo || "",
           sasiNo: aracRes.sasiNo || "",
           motorNo: aracRes.motorNo || "",
           guncelKmSaat: aracRes.guncelKmSaat,
@@ -236,6 +239,7 @@ export default function AracFormClient({ aracId }: { aracId: string }) {
           modelYili: form.modelYili ? Number(form.modelYili) : null,
           guncelKmSaat: form.guncelKmSaat ? Number(form.guncelKmSaat) : null,
           tescilTarihi: form.tescilTarihi || null,
+          ruhsatSeriNo: form.ruhsatSeriNo || null,
           k1YetkiBelgesi: form.k1YetkiBelgesi || null,
           muayeneGerekli: form.muayeneGerekli,
           sigortaGerekli: form.sigortaGerekli,
@@ -550,6 +554,10 @@ export default function AracFormClient({ aracId }: { aracId: string }) {
               <div>
                 <label className="block text-xs font-medium text-slate-600 mb-1">Kullanim Sekli</label>
                 <input type="text" value={form.kullanimSekli} onChange={(e) => updateField("kullanimSekli", e.target.value)} disabled={isFieldDisabled("kullanimSekli")} className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm disabled:bg-slate-50" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1">Ruhsat Seri No</label>
+                <input type="text" value={form.ruhsatSeriNo} onChange={(e) => updateField("ruhsatSeriNo", e.target.value)} disabled={isFieldDisabled("ruhsatSeriNo")} placeholder="Orn: AA123456" className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm disabled:bg-slate-50" />
               </div>
               <div>
                 <label className="block text-xs font-medium text-slate-600 mb-1">Sasi No</label>

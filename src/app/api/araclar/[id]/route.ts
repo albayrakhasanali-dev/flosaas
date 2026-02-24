@@ -52,6 +52,7 @@ export async function PUT(
       markaModelTicariAdi: body.markaModelTicariAdi,
       kullanimSekli: body.kullanimSekli,
       modelYili: body.modelYili,
+      ruhsatSeriNo: body.ruhsatSeriNo,
       sasiNo: body.sasiNo,
       motorNo: body.motorNo,
       guncelKmSaat: body.guncelKmSaat,

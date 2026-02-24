@@ -8,6 +8,7 @@ interface AracOption {
   id: number;
   plaka: string;
   k1YetkiBelgesi?: string | null;
+  ruhsatSeriNo?: string | null;
 }
 
 interface MuayeneData {
@@ -24,6 +25,7 @@ interface MuayeneData {
   basarisizDetay: string;
   notlar: string;
   plaka: string;
+  ruhsatSeriNo: string;
   k1YetkiBelgesi: string;
 }
 
@@ -41,6 +43,7 @@ const emptyMuayene: MuayeneData = {
   basarisizDetay: "",
   notlar: "",
   plaka: "",
+  ruhsatSeriNo: "",
   k1YetkiBelgesi: "",
 };
 
@@ -96,10 +99,11 @@ export default function MuayeneFormClient({ muayeneId }: { muayeneId?: string })
       .then((r) => r.json())
       .then((data) => {
         setAraclar(
-          data.data.map((a: { id: number; plaka: string; k1YetkiBelgesi?: string | null }) => ({
+          data.data.map((a: { id: number; plaka: string; k1YetkiBelgesi?: string | null; ruhsatSeriNo?: string | null }) => ({
             id: a.id,
             plaka: a.plaka,
             k1YetkiBelgesi: a.k1YetkiBelgesi,
+            ruhsatSeriNo: a.ruhsatSeriNo,
           }))
         );
       })
@@ -126,6 +130,7 @@ export default function MuayeneFormClient({ muayeneId }: { muayeneId?: string })
             basarisizDetay: data.basarisizDetay || "",
             notlar: data.notlar || "",
             plaka: data.arac?.plaka || "",
+            ruhsatSeriNo: data.arac?.ruhsatSeriNo || "",
             k1YetkiBelgesi: data.arac?.k1YetkiBelgesi || "",
           });
           setLoading(false);
@@ -138,7 +143,7 @@ export default function MuayeneFormClient({ muayeneId }: { muayeneId?: string })
     setForm((prev) => ({ ...prev, [field]: value }));
     if (field === "aracId" && value) {
       const selected = araclar.find((a) => String(a.id) === value);
-      if (selected) setForm((prev) => ({ ...prev, [field]: value, plaka: selected.plaka, k1YetkiBelgesi: selected.k1YetkiBelgesi || "" }));
+      if (selected) setForm((prev) => ({ ...prev, [field]: value, plaka: selected.plaka, ruhsatSeriNo: selected.ruhsatSeriNo || "", k1YetkiBelgesi: selected.k1YetkiBelgesi || "" }));
     }
   };
 
@@ -409,6 +414,17 @@ export default function MuayeneFormClient({ muayeneId }: { muayeneId?: string })
                 onChange={(e) => handleChange("muayeneUcreti", e.target.value)}
                 placeholder="0.00"
                 className={inputClass}
+              />
+            </div>
+
+            <div>
+              <label className={labelClass}>Ruhsat Seri No</label>
+              <input
+                type="text"
+                value={form.ruhsatSeriNo}
+                disabled
+                className={`${inputClass} bg-slate-50 cursor-not-allowed ${form.ruhsatSeriNo ? "text-slate-700 font-medium" : "text-slate-400 italic"}`}
+                placeholder="Arac secildiginde otomatik gelir"
               />
             </div>
 
