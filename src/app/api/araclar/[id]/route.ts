@@ -60,6 +60,7 @@ export async function PUT(
       seyirTakipCihazNo: body.seyirTakipCihazNo,
       hgsEtiketNo: body.hgsEtiketNo,
       tescilTarihi: body.tescilTarihi ? new Date(body.tescilTarihi) : undefined,
+      k1YetkiBelgesi: body.k1YetkiBelgesi !== undefined ? body.k1YetkiBelgesi : undefined,
       muayeneGerekli: body.muayeneGerekli !== undefined ? body.muayeneGerekli : undefined,
       sigortaGerekli: body.sigortaGerekli !== undefined ? body.sigortaGerekli : undefined,
       // muayeneBitisTarihi, sigortaBitisTarihi, kaskoBitisTarihi

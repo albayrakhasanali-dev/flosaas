@@ -34,6 +34,7 @@ interface FormData {
   muayeneBitisTarihi: string;
   sigortaBitisTarihi: string;
   kaskoBitisTarihi: string;
+  k1YetkiBelgesi: string;
   muayeneGerekli: boolean;
   sigortaGerekli: boolean;
   aciklamaNot: string;
@@ -125,6 +126,7 @@ const emptyForm: FormData = {
   muayeneBitisTarihi: "",
   sigortaBitisTarihi: "",
   kaskoBitisTarihi: "",
+  k1YetkiBelgesi: "",
   muayeneGerekli: true,
   sigortaGerekli: true,
   aciklamaNot: "",
@@ -189,6 +191,7 @@ export default function AracFormClient({ aracId }: { aracId: string }) {
           muayeneBitisTarihi: formatDateForInput(aracRes.muayeneBitisTarihi),
           sigortaBitisTarihi: formatDateForInput(aracRes.sigortaBitisTarihi),
           kaskoBitisTarihi: formatDateForInput(aracRes.kaskoBitisTarihi),
+          k1YetkiBelgesi: aracRes.k1YetkiBelgesi || "",
           muayeneGerekli: aracRes.muayeneGerekli !== false,
           sigortaGerekli: aracRes.sigortaGerekli !== false,
           aciklamaNot: aracRes.aciklamaNot || "",
@@ -228,6 +231,7 @@ export default function AracFormClient({ aracId }: { aracId: string }) {
           modelYili: form.modelYili ? Number(form.modelYili) : null,
           guncelKmSaat: form.guncelKmSaat ? Number(form.guncelKmSaat) : null,
           tescilTarihi: form.tescilTarihi || null,
+          k1YetkiBelgesi: form.k1YetkiBelgesi || null,
           muayeneGerekli: form.muayeneGerekli,
           sigortaGerekli: form.sigortaGerekli,
           // Date fields managed by Takip Modulleri — exclude from save
@@ -544,6 +548,14 @@ export default function AracFormClient({ aracId }: { aracId: string }) {
               )}
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div>
+                  <label className="block text-xs font-medium text-slate-600 mb-1">K1 Yetki Belgesi</label>
+                  <select value={form.k1YetkiBelgesi} onChange={(e) => updateField("k1YetkiBelgesi", e.target.value)} disabled={isFieldDisabled("k1YetkiBelgesi")} className={`w-full px-3 py-2 border rounded-lg text-sm disabled:bg-slate-50 ${form.k1YetkiBelgesi === "var" ? "border-green-400 bg-green-50 text-green-700 font-medium" : form.k1YetkiBelgesi === "yok" ? "border-red-300 bg-red-50 text-red-700 font-medium" : "border-slate-300"}`}>
+                    <option value="">Belirtilmedi</option>
+                    <option value="var">Var</option>
+                    <option value="yok">Yok</option>
+                  </select>
+                </div>
                 <div>
                   <label className="block text-xs font-medium text-slate-600 mb-1">Tescil Tarihi</label>
                   <input type="date" value={form.tescilTarihi} onChange={(e) => updateField("tescilTarihi", e.target.value)} disabled={isFieldDisabled("tescilTarihi")} className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm disabled:bg-slate-50" />

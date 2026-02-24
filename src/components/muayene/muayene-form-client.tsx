@@ -7,6 +7,7 @@ import { ArrowLeft, Save, Trash2, Upload, X } from "lucide-react";
 interface AracOption {
   id: number;
   plaka: string;
+  k1YetkiBelgesi?: string | null;
 }
 
 interface MuayeneData {
@@ -23,6 +24,7 @@ interface MuayeneData {
   basarisizDetay: string;
   notlar: string;
   plaka: string;
+  k1YetkiBelgesi: string;
 }
 
 const emptyMuayene: MuayeneData = {
@@ -39,6 +41,7 @@ const emptyMuayene: MuayeneData = {
   basarisizDetay: "",
   notlar: "",
   plaka: "",
+  k1YetkiBelgesi: "",
 };
 
 const muayeneTipleri = [
@@ -93,9 +96,10 @@ export default function MuayeneFormClient({ muayeneId }: { muayeneId?: string })
       .then((r) => r.json())
       .then((data) => {
         setAraclar(
-          data.data.map((a: { id: number; plaka: string }) => ({
+          data.data.map((a: { id: number; plaka: string; k1YetkiBelgesi?: string | null }) => ({
             id: a.id,
             plaka: a.plaka,
+            k1YetkiBelgesi: a.k1YetkiBelgesi,
           }))
         );
       })
@@ -122,6 +126,7 @@ export default function MuayeneFormClient({ muayeneId }: { muayeneId?: string })
             basarisizDetay: data.basarisizDetay || "",
             notlar: data.notlar || "",
             plaka: data.arac?.plaka || "",
+            k1YetkiBelgesi: data.arac?.k1YetkiBelgesi || "",
           });
           setLoading(false);
         })
@@ -133,7 +138,7 @@ export default function MuayeneFormClient({ muayeneId }: { muayeneId?: string })
     setForm((prev) => ({ ...prev, [field]: value }));
     if (field === "aracId" && value) {
       const selected = araclar.find((a) => String(a.id) === value);
-      if (selected) setForm((prev) => ({ ...prev, [field]: value, plaka: selected.plaka }));
+      if (selected) setForm((prev) => ({ ...prev, [field]: value, plaka: selected.plaka, k1YetkiBelgesi: selected.k1YetkiBelgesi || "" }));
     }
   };
 
@@ -152,6 +157,14 @@ export default function MuayeneFormClient({ muayeneId }: { muayeneId?: string })
         body: JSON.stringify(form),
       });
       if (res.ok) {
+        // Update K1 on vehicle if changed
+        if (form.aracId && form.k1YetkiBelgesi) {
+          await fetch(`/api/araclar/${form.aracId}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ k1YetkiBelgesi: form.k1YetkiBelgesi }),
+          }).catch(() => {});
+        }
         if (raporFile && form.aracId) {
           const fd = new FormData();
           fd.append("file", raporFile);
@@ -397,6 +410,19 @@ export default function MuayeneFormClient({ muayeneId }: { muayeneId?: string })
                 placeholder="0.00"
                 className={inputClass}
               />
+            </div>
+
+            <div>
+              <label className={labelClass}>K1 Yetki Belgesi</label>
+              <select
+                value={form.k1YetkiBelgesi}
+                onChange={(e) => handleChange("k1YetkiBelgesi", e.target.value)}
+                className={`${inputClass} ${form.k1YetkiBelgesi === "var" ? "border-green-400 bg-green-50 text-green-700 font-medium" : form.k1YetkiBelgesi === "yok" ? "border-red-300 bg-red-50 text-red-700 font-medium" : ""}`}
+              >
+                <option value="">Belirtilmedi</option>
+                <option value="var">Var</option>
+                <option value="yok">Yok</option>
+              </select>
             </div>
 
             {/* Rapor Dosyasi */}
