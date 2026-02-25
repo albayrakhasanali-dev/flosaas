@@ -31,6 +31,11 @@ interface FormData {
   uttsDurum: string;
   seyirTakipCihazNo: string;
   hgsEtiketNo: string;
+  otomatikVar: boolean;
+  otomatikFirma: string;
+  otomatikKod: string;
+  etiketSinifi: number | null;
+  hgsKimeAit: string;
   tescilTarihi: string;
   muayeneBitisTarihi: string;
   sigortaBitisTarihi: string;
@@ -124,6 +129,11 @@ const emptyForm: FormData = {
   uttsDurum: "",
   seyirTakipCihazNo: "",
   hgsEtiketNo: "",
+  otomatikVar: false,
+  otomatikFirma: "",
+  otomatikKod: "",
+  etiketSinifi: null,
+  hgsKimeAit: "",
   tescilTarihi: "",
   muayeneBitisTarihi: "",
   sigortaBitisTarihi: "",
@@ -195,6 +205,11 @@ export default function AracFormClient({ aracId }: { aracId: string }) {
           uttsDurum: aracRes.uttsDurum || "",
           seyirTakipCihazNo: aracRes.seyirTakipCihazNo || "",
           hgsEtiketNo: aracRes.hgsEtiketNo || "",
+          otomatikVar: aracRes.otomatikVar === true,
+          otomatikFirma: aracRes.otomatikFirma || "",
+          otomatikKod: aracRes.otomatikKod || "",
+          etiketSinifi: aracRes.etiketSinifi ?? null,
+          hgsKimeAit: aracRes.hgsKimeAit || "",
           tescilTarihi: formatDateForInput(aracRes.tescilTarihi),
           muayeneBitisTarihi: formatDateForInput(aracRes.muayeneBitisTarihi),
           sigortaBitisTarihi: formatDateForInput(aracRes.sigortaBitisTarihi),
@@ -241,6 +256,11 @@ export default function AracFormClient({ aracId }: { aracId: string }) {
           tescilTarihi: form.tescilTarihi || null,
           ruhsatSeriNo: form.ruhsatSeriNo || null,
           k1YetkiBelgesi: form.k1YetkiBelgesi || null,
+          otomatikVar: form.otomatikVar,
+          otomatikFirma: form.otomatikFirma || null,
+          otomatikKod: form.otomatikKod || null,
+          etiketSinifi: form.etiketSinifi ? Number(form.etiketSinifi) : null,
+          hgsKimeAit: form.hgsKimeAit || null,
           muayeneGerekli: form.muayeneGerekli,
           sigortaGerekli: form.sigortaGerekli,
           // Date fields managed by Takip Modulleri — exclude from save
@@ -653,6 +673,48 @@ export default function AracFormClient({ aracId }: { aracId: string }) {
                 <label className="block text-xs font-medium text-slate-600 mb-1">HGS Etiket No</label>
                 <input type="text" value={form.hgsEtiketNo} onChange={(e) => updateField("hgsEtiketNo", e.target.value)} disabled={isFieldDisabled("hgsEtiketNo")} className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm disabled:bg-slate-50" />
               </div>
+
+              {/* Otomatik / Etiket / HGS Alanları */}
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1">Otomatik</label>
+                <div className="flex items-center gap-3 h-[38px]">
+                  <button
+                    type="button"
+                    onClick={() => updateField("otomatikVar", !form.otomatikVar)}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${form.otomatikVar ? "bg-green-500" : "bg-slate-300"}`}
+                  >
+                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${form.otomatikVar ? "translate-x-6" : "translate-x-1"}`} />
+                  </button>
+                  <span className={`text-sm font-medium ${form.otomatikVar ? "text-green-600" : "text-slate-500"}`}>
+                    {form.otomatikVar ? "VAR" : "YOK"}
+                  </span>
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1">Otomatik Firma</label>
+                <input type="text" value={form.otomatikFirma} onChange={(e) => updateField("otomatikFirma", e.target.value)} placeholder="Firma adi girin" className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1">Otomatik Kod</label>
+                <input type="text" value={form.otomatikKod} onChange={(e) => updateField("otomatikKod", e.target.value)} placeholder="Otomatik kodu girin" className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1">Etiket Sinifi</label>
+                <select value={form.etiketSinifi || ""} onChange={(e) => updateField("etiketSinifi", e.target.value ? Number(e.target.value) : null)} className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm">
+                  <option value="">Seciniz</option>
+                  <option value="1">1</option>
+                  <option value="2">2</option>
+                  <option value="3">3</option>
+                  <option value="4">4</option>
+                  <option value="5">5</option>
+                  <option value="6">6</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1">HGS Kime Ait</label>
+                <input type="text" value={form.hgsKimeAit} onChange={(e) => updateField("hgsKimeAit", e.target.value)} placeholder="Firma veya kisi adi" className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm" />
+              </div>
+
               <div className="md:col-span-2 lg:col-span-3">
                 <label className="block text-xs font-medium text-slate-600 mb-1">Aciklama / Not</label>
                 <textarea value={form.aciklamaNot} onChange={(e) => updateField("aciklamaNot", e.target.value)} disabled={isFieldDisabled("aciklamaNot")} rows={3} className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm disabled:bg-slate-50" />

@@ -70,6 +70,11 @@ model T_Arac_Master {
   seyirTakipCihazNo     String?   @map("seyir_takip_cihaz_no")
   hgsEtiketNo           String?   @map("hgs_etiket_no")
   hgsSinif              Int?      @map("hgs_sinif")
+  otomatikVar           Boolean?  @map("otomatik_var") // VAR/YOK
+  otomatikFirma         String?   @map("otomatik_firma")
+  otomatikKod           String?   @map("otomatik_kod")
+  etiketSinifi          Int?      @map("etiket_sinifi") // 1-6
+  hgsKimeAit            String?   @map("hgs_kime_ait")
   tescilTarihi          DateTime? @map("tescil_tarihi")
   muayeneBitisTarihi    DateTime? @map("muayene_bitis_tarihi")
   sigortaBitisTarihi    DateTime? @map("sigorta_bitis_tarihi")
