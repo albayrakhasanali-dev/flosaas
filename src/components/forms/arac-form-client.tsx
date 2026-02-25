@@ -674,9 +674,9 @@ export default function AracFormClient({ aracId }: { aracId: string }) {
                 <input type="text" value={form.hgsEtiketNo} onChange={(e) => updateField("hgsEtiketNo", e.target.value)} disabled={isFieldDisabled("hgsEtiketNo")} className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm disabled:bg-slate-50" />
               </div>
 
-              {/* Otomatik / Etiket / HGS Alanları */}
+              {/* Automatic / Etiket / HGS Alanları */}
               <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1">Otomatik</label>
+                <label className="block text-xs font-medium text-slate-600 mb-1">Automatic</label>
                 <div className="flex items-center gap-3 h-[38px]">
                   <button
                     type="button"
@@ -691,12 +691,12 @@ export default function AracFormClient({ aracId }: { aracId: string }) {
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1">Otomatik Firma</label>
+                <label className="block text-xs font-medium text-slate-600 mb-1">Automatic Firma</label>
                 <input type="text" value={form.otomatikFirma} onChange={(e) => updateField("otomatikFirma", e.target.value)} placeholder="Firma adi girin" className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm" />
               </div>
               <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1">Otomatik Kod</label>
-                <input type="text" value={form.otomatikKod} onChange={(e) => updateField("otomatikKod", e.target.value)} placeholder="Otomatik kodu girin" className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm" />
+                <label className="block text-xs font-medium text-slate-600 mb-1">Automatic Kod</label>
+                <input type="text" value={form.otomatikKod} onChange={(e) => updateField("otomatikKod", e.target.value)} placeholder="Automatic kodu girin" className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm" />
               </div>
               <div>
                 <label className="block text-xs font-medium text-slate-600 mb-1">Etiket Sinifi</label>
