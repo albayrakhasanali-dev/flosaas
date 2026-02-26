@@ -75,6 +75,10 @@ model T_Arac_Master {
   otomatikKod           String?   @map("otomatik_kod")
   etiketSinifi          Int?      @map("etiket_sinifi") // 1-6
   hgsKimeAit            String?   @map("hgs_kime_ait")
+  takograf              String?   @map("takograf") // var, yok
+  taahhutname           String?   @map("taahhutname") // var, yok
+  kabisVar              Boolean?  @map("kabis_var")
+  kabisSirket           String?   @map("kabis_sirket")
   tescilTarihi          DateTime? @map("tescil_tarihi")
   muayeneBitisTarihi    DateTime? @map("muayene_bitis_tarihi")
   sigortaBitisTarihi    DateTime? @map("sigorta_bitis_tarihi")

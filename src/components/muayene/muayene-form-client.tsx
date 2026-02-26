@@ -386,6 +386,18 @@ export default function MuayeneFormClient({ muayeneId }: { muayeneId?: string })
               />
             </div>
             <div>
+              <label className={labelClass}>K1 Yetki Belgesi</label>
+              <select
+                value={form.k1YetkiBelgesi}
+                onChange={(e) => handleChange("k1YetkiBelgesi", e.target.value)}
+                className={`${inputClass} ${form.k1YetkiBelgesi === "var" ? "border-green-400 bg-green-50 text-green-700 font-medium" : form.k1YetkiBelgesi === "yok" ? "border-red-300 bg-red-50 text-red-700 font-medium" : ""}`}
+              >
+                <option value="">Belirtilmedi</option>
+                <option value="var">Var</option>
+                <option value="yok">Yok</option>
+              </select>
+            </div>
+            <div>
               <label className={labelClass}>Muayene Istasyonu</label>
               <input
                 type="text"
@@ -426,19 +438,6 @@ export default function MuayeneFormClient({ muayeneId }: { muayeneId?: string })
                 className={`${inputClass} bg-slate-50 cursor-not-allowed ${form.ruhsatSeriNo ? "text-slate-700 font-medium" : "text-slate-400 italic"}`}
                 placeholder="Arac secildiginde otomatik gelir"
               />
-            </div>
-
-            <div>
-              <label className={labelClass}>K1 Yetki Belgesi</label>
-              <select
-                value={form.k1YetkiBelgesi}
-                onChange={(e) => handleChange("k1YetkiBelgesi", e.target.value)}
-                className={`${inputClass} ${form.k1YetkiBelgesi === "var" ? "border-green-400 bg-green-50 text-green-700 font-medium" : form.k1YetkiBelgesi === "yok" ? "border-red-300 bg-red-50 text-red-700 font-medium" : ""}`}
-              >
-                <option value="">Belirtilmedi</option>
-                <option value="var">Var</option>
-                <option value="yok">Yok</option>
-              </select>
             </div>
 
             {/* Rapor Dosyasi */}

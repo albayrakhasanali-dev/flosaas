@@ -36,6 +36,10 @@ interface FormData {
   otomatikKod: string;
   etiketSinifi: number | null;
   hgsKimeAit: string;
+  takograf: string;
+  taahhutname: string;
+  kabisVar: boolean;
+  kabisSirket: string;
   tescilTarihi: string;
   muayeneBitisTarihi: string;
   sigortaBitisTarihi: string;
@@ -134,6 +138,10 @@ const emptyForm: FormData = {
   otomatikKod: "",
   etiketSinifi: null,
   hgsKimeAit: "",
+  takograf: "",
+  taahhutname: "",
+  kabisVar: false,
+  kabisSirket: "",
   tescilTarihi: "",
   muayeneBitisTarihi: "",
   sigortaBitisTarihi: "",
@@ -210,6 +218,10 @@ export default function AracFormClient({ aracId }: { aracId: string }) {
           otomatikKod: aracRes.otomatikKod || "",
           etiketSinifi: aracRes.etiketSinifi ?? null,
           hgsKimeAit: aracRes.hgsKimeAit || "",
+          takograf: aracRes.takograf || "",
+          taahhutname: aracRes.taahhutname || "",
+          kabisVar: aracRes.kabisVar === true,
+          kabisSirket: aracRes.kabisSirket || "",
           tescilTarihi: formatDateForInput(aracRes.tescilTarihi),
           muayeneBitisTarihi: formatDateForInput(aracRes.muayeneBitisTarihi),
           sigortaBitisTarihi: formatDateForInput(aracRes.sigortaBitisTarihi),
@@ -261,6 +273,10 @@ export default function AracFormClient({ aracId }: { aracId: string }) {
           otomatikKod: form.otomatikKod || null,
           etiketSinifi: form.etiketSinifi ? Number(form.etiketSinifi) : null,
           hgsKimeAit: form.hgsKimeAit || null,
+          takograf: form.takograf || null,
+          taahhutname: form.taahhutname || null,
+          kabisVar: form.kabisVar,
+          kabisSirket: form.kabisSirket || null,
           muayeneGerekli: form.muayeneGerekli,
           sigortaGerekli: form.sigortaGerekli,
           // Date fields managed by Takip Modulleri — exclude from save
@@ -713,6 +729,43 @@ export default function AracFormClient({ aracId }: { aracId: string }) {
               <div>
                 <label className="block text-xs font-medium text-slate-600 mb-1">HGS Kime Ait</label>
                 <input type="text" value={form.hgsKimeAit} onChange={(e) => updateField("hgsKimeAit", e.target.value)} placeholder="Firma veya kisi adi" className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm" />
+              </div>
+
+              {/* Takograf / Taahhutname / Kabis */}
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1">Takograf / Taahhutname</label>
+                <select value={form.takograf} onChange={(e) => updateField("takograf", e.target.value)} className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm">
+                  <option value="">Seciniz</option>
+                  <option value="var">Var</option>
+                  <option value="yok">Yok</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1">Taahhutname</label>
+                <select value={form.taahhutname} onChange={(e) => updateField("taahhutname", e.target.value)} className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm">
+                  <option value="">Seciniz</option>
+                  <option value="var">Var</option>
+                  <option value="yok">Yok</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1">Kabis</label>
+                <div className="flex items-center gap-3 h-[38px]">
+                  <button
+                    type="button"
+                    onClick={() => updateField("kabisVar", !form.kabisVar)}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${form.kabisVar ? "bg-green-500" : "bg-slate-300"}`}
+                  >
+                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${form.kabisVar ? "translate-x-6" : "translate-x-1"}`} />
+                  </button>
+                  <span className={`text-sm font-medium ${form.kabisVar ? "text-green-600" : "text-slate-500"}`}>
+                    {form.kabisVar ? "VAR" : "YOK"}
+                  </span>
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1">Kabis Sirket</label>
+                <input type="text" value={form.kabisSirket} onChange={(e) => updateField("kabisSirket", e.target.value)} placeholder="Hangi sirkette kabisli" className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm" />
               </div>
 
               <div className="md:col-span-2 lg:col-span-3">
