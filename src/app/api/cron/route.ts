@@ -17,9 +17,10 @@ export async function GET(req: NextRequest) {
   }
 
   const job = searchParams.get("job") || "expired_vehicles";
+  const force = searchParams.get("force") === "true";
 
   if (job === "weekly_report") {
-    return handleWeeklyReport();
+    return handleWeeklyReport(force);
   }
   return handleExpiredVehicles();
 }
@@ -137,7 +138,7 @@ async function handleExpiredVehicles() {
 // JOB 2: Haftalik muayene/sigorta raporu
 // Reads settings from T_Mail_Ayarlari DB table
 // ============================================
-async function handleWeeklyReport() {
+async function handleWeeklyReport(force = false) {
   try {
     // Read mail settings from DB
     const mailAyarlari = await prisma.t_Mail_Ayarlari.findMany({
@@ -154,8 +155,8 @@ async function handleWeeklyReport() {
     const results: string[] = [];
 
     for (const ayar of mailAyarlari) {
-      // Check frequency: skip if weekly and wrong day
-      if (ayar.frekans === "haftalik" && currentDay !== ayar.haftaninGunu) {
+      // Check frequency: skip if weekly and wrong day (unless force=true)
+      if (!force && ayar.frekans === "haftalik" && currentDay !== ayar.haftaninGunu) {
         results.push(`${ayar.modulTipi}: skipped (not scheduled day)`);
         continue;
       }
