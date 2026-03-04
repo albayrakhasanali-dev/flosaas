@@ -1,37 +1,37 @@
 import nodemailer from "nodemailer";
 import type SMTPTransport from "nodemailer/lib/smtp-transport";
 import dns from "dns";
+import net from "net";
 
-// Resolve SMTP hostname to IP to avoid getaddrinfo EBUSY in serverless
-async function resolveHost(hostname: string): Promise<string> {
-  return new Promise((resolve) => {
-    dns.resolve4(hostname, (err, addresses) => {
-      if (err || !addresses || addresses.length === 0) {
-        resolve(hostname); // fallback to hostname
-      } else {
-        resolve(addresses[0]);
-      }
-    });
-  });
+// Pre-resolve SMTP host via dns.resolve4 (c-ares, avoids getaddrinfo EBUSY)
+async function resolveHost(host: string): Promise<string> {
+  if (net.isIP(host)) return host;
+  try {
+    const addresses = await dns.promises.resolve4(host);
+    if (addresses.length > 0) {
+      console.log(`DNS resolved ${host} -> ${addresses[0]}`);
+      return addresses[0];
+    }
+  } catch (e) {
+    console.warn(`DNS resolve4 failed for ${host}, using hostname:`, e);
+  }
+  return host;
 }
 
 async function createTransporter() {
-  const smtpHost = process.env.SMTP_HOST || "smtp.gmail.com";
-  const resolvedHost = await resolveHost(smtpHost);
+  const originalHost = process.env.SMTP_HOST || "smtp.gmail.com";
+  const resolvedHost = await resolveHost(originalHost);
 
   const opts: SMTPTransport.Options = {
     host: resolvedHost,
     port: Number(process.env.SMTP_PORT) || 587,
     secure: false,
-    connectionTimeout: 10000,
-    greetingTimeout: 10000,
-    socketTimeout: 15000,
-    tls: {
-      servername: smtpHost, // use original hostname for TLS SNI
-    },
     auth: {
       user: process.env.SMTP_USER,
       pass: process.env.SMTP_PASS,
+    },
+    tls: {
+      servername: originalHost,
     },
   };
   return nodemailer.createTransport(opts);
@@ -39,7 +39,7 @@ async function createTransporter() {
 
 async function sendMailWithRetry(
   mailOptions: nodemailer.SendMailOptions,
-  maxRetries = 3
+  maxRetries = 5
 ) {
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
@@ -49,10 +49,15 @@ async function sendMailWithRetry(
       return result;
     } catch (error: unknown) {
       const errMsg = error instanceof Error ? error.message : String(error);
-      const isRetryable = errMsg.includes("EBUSY") || errMsg.includes("ECONNRESET") || errMsg.includes("ETIMEDOUT") || errMsg.includes("getaddrinfo");
+      const isRetryable =
+        errMsg.includes("EBUSY") ||
+        errMsg.includes("ECONNRESET") ||
+        errMsg.includes("ETIMEDOUT") ||
+        errMsg.includes("getaddrinfo");
+
       if (attempt === maxRetries || !isRetryable) throw error;
-      console.warn(`SMTP attempt ${attempt} failed (${errMsg}), retrying in ${attempt * 2}s...`);
-      await new Promise((r) => setTimeout(r, attempt * 2000));
+      console.warn(`SMTP attempt ${attempt}/${maxRetries} failed: ${errMsg}`);
+      await new Promise((r) => setTimeout(r, attempt * 3000));
     }
   }
 }
