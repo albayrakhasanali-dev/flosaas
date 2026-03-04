@@ -22,6 +22,7 @@ import { exportToExcel } from "@/lib/excel-export";
 interface MuayeneArac {
   id: number;
   plaka: string;
+  k1YetkiBelgesi: string | null;
   sirket: { sirketAdi: string } | null;
   lokasyon: { lokasyonAdi: string } | null;
 }
@@ -147,6 +148,7 @@ export default function MuayeneTakipClient() {
           tipi: muayeneTipiLabels[m.muayeneTipi] || m.muayeneTipi,
           istasyon: m.muayeneIstasyonu || "",
           il: m.muayeneIstasyonuIl || "",
+          k1YetkiBelgesi: m.arac.k1YetkiBelgesi === "var" ? "VAR" : "YOK",
           raporNo: m.raporNo || "",
           ucret: m.muayeneUcreti || "",
         };
@@ -163,6 +165,7 @@ export default function MuayeneTakipClient() {
         { header: "Tipi", key: "tipi", width: 14 },
         { header: "Istasyon", key: "istasyon", width: 25 },
         { header: "Il", key: "il", width: 12 },
+        { header: "K1 Yetki Belgesi", key: "k1YetkiBelgesi", width: 16 },
         { header: "Rapor No", key: "raporNo", width: 14 },
         { header: "Ucret (TL)", key: "ucret", width: 12 },
       ], `Muayene_Takip_${new Date().toISOString().split("T")[0]}`);
@@ -354,7 +357,7 @@ export default function MuayeneTakipClient() {
                     <th>Kalan Gun</th>
                     <th>Sonuc</th>
                     <th>Istasyon</th>
-                    <th>Rapor No</th>
+                    <th>K1 Yetki Belgesi</th>
                     <th>Tipi</th>
                     <th></th>
                   </tr>
@@ -403,7 +406,13 @@ export default function MuayeneTakipClient() {
                           </span>
                         </td>
                         <td className="text-xs">{m.muayeneIstasyonu || "-"}</td>
-                        <td className="text-xs font-mono">{m.raporNo || "-"}</td>
+                        <td>
+                          {m.arac.k1YetkiBelgesi === "var" ? (
+                            <span className="badge badge-success text-xs">VAR</span>
+                          ) : (
+                            <span className="badge badge-danger text-xs">YOK</span>
+                          )}
+                        </td>
                         <td>
                           <span className="badge badge-neutral text-xs">
                             {muayeneTipiLabels[m.muayeneTipi] || m.muayeneTipi}

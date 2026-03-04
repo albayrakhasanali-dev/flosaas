@@ -17,6 +17,7 @@ import {
   Shield,
   ListTodo,
   Users,
+  Mail,
 } from "lucide-react";
 
 interface MenuItem {
@@ -39,6 +40,7 @@ const menuItems: MenuItem[] = [
   { href: "/muayene-takip", label: "Muayene Takip", icon: ClipboardCheck, section: "Takip Modulleri", badge: "🔍" },
   { href: "/sigorta-takip", label: "Sigorta Takip", icon: Shield, section: "Takip Modulleri", badge: "🛡️" },
   { href: "/yapilacaklar", label: "Yapilacaklar", icon: ListTodo, section: "Takip Modulleri", badge: "📋" },
+  { href: "/mail-ayarlari", label: "Mail Ayarlari", icon: Mail, section: "Takip Modulleri", badge: "✉️", requiredRole: "sirket_yoneticisi" },
   { href: "/kullanicilar", label: "Kullanici Yonetimi", icon: Users, section: "Yonetim", badge: "👥", requiredRole: "sirket_yoneticisi" },
 ];
 

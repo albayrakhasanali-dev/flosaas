@@ -290,3 +290,25 @@ model CronLog {
 
   @@map("cron_logs")
 }
+
+// ==========================================
+// MAIL AYARLARI (E-POSTA YAPILANDIRMA)
+// ==========================================
+
+model T_Mail_Ayarlari {
+  id                  Int       @id @default(autoincrement())
+  modulTipi           String    @unique @map("modul_tipi")          // "muayene" | "sigorta"
+  aktif               Boolean   @default(false)
+  frekans             String    @default("haftalik") @map("frekans") // "haftalik" | "gunluk"
+  haftaninGunu        Int       @default(1) @map("haftanin_gunu")   // 0=Pazar, 1=Pazartesi, ..., 6=Cumartesi
+  gonderimSaati       Int       @default(8) @map("gonderim_saati")  // 0-23
+  alicilar            String    @default("[]") @map("alicilar")     // JSON array of email strings
+  kriterler           String    @default("[\"suresi_gecmis\",\"yaklasan_30\"]") @map("kriterler") // JSON array
+  esikGunleri         String    @default("[30,15,7]") @map("esik_gunleri") // JSON array of threshold days
+  yoneticilereGonder  Boolean   @default(true) @map("yoneticilere_gonder")
+  sonGonderimTarihi   DateTime? @map("son_gonderim_tarihi")
+  createdAt           DateTime  @default(now()) @map("created_at")
+  updatedAt           DateTime  @updatedAt @map("updated_at")
+
+  @@map("t_mail_ayarlari")
+}

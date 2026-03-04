@@ -28,12 +28,16 @@ export async function GET(req: NextRequest) {
   const thirtyDaysFromNow = new Date();
   thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
 
-  if (durum === "suresi_gecmis") {
-    filters.push({ bitisTarihi: { lt: now } });
-  } else if (durum === "yaklasiyor") {
-    filters.push({ bitisTarihi: { gte: now, lte: thirtyDaysFromNow } });
-  } else if (durum === "gecerli") {
-    filters.push({ bitisTarihi: { gt: thirtyDaysFromNow } });
+  const isSigortasiz = durum === "sigortasiz";
+
+  if (!isSigortasiz) {
+    if (durum === "suresi_gecmis") {
+      filters.push({ bitisTarihi: { lt: now } });
+    } else if (durum === "yaklasiyor") {
+      filters.push({ bitisTarihi: { gte: now, lte: thirtyDaysFromNow } });
+    } else if (durum === "gecerli") {
+      filters.push({ bitisTarihi: { gt: thirtyDaysFromNow } });
+    }
   }
 
   if (search) {
@@ -57,6 +61,79 @@ export async function GET(req: NextRequest) {
     },
   };
 
+  // Sigortasız araçlar mode: show vehicles with NO sigorta records
+  if (isSigortasiz) {
+    const sigortasizWhere = {
+      ...aracFilter,
+      sigortalar: { none: {} },
+      ...(search ? {
+        plaka: { contains: search, mode: "insensitive" as const },
+      } : {}),
+    };
+
+    const [araclar, aracTotal] = await Promise.all([
+      prisma.t_Arac_Master.findMany({
+        where: sigortasizWhere,
+        select: {
+          id: true,
+          plaka: true,
+          sirket: { select: { sirketAdi: true } },
+          lokasyon: { select: { lokasyonAdi: true } },
+        },
+        skip: (page - 1) * limit,
+        take: limit,
+        orderBy: { plaka: "asc" },
+      }),
+      prisma.t_Arac_Master.count({ where: sigortasizWhere }),
+    ]);
+
+    // Transform to match expected format with sigortasiz flag
+    const data = araclar.map((a) => ({
+      id: `nosig-${a.id}`,
+      sigortaTuru: null,
+      policeNo: null,
+      sigortaSirketi: null,
+      acenteAdi: null,
+      baslangicTarihi: null,
+      bitisTarihi: null,
+      primTutari: null,
+      odemeDurumu: null,
+      odemeSekli: null,
+      sigortasiz: true,
+      arac: {
+        id: a.id,
+        plaka: a.plaka,
+        sirket: a.sirket,
+        lokasyon: a.lokasyon,
+      },
+    }));
+
+    // Still need summary stats
+    const allWhere = { arac: aracFilter };
+    const [toplamPolice, suresiGecmis, yaklasiyor, primStats, odenmemisPrim, sigortasizCount] = await Promise.all([
+      prisma.t_Sigorta.count({ where: allWhere }),
+      prisma.t_Sigorta.count({ where: { ...allWhere, bitisTarihi: { lt: now } } }),
+      prisma.t_Sigorta.count({ where: { ...allWhere, bitisTarihi: { gte: now, lte: thirtyDaysFromNow } } }),
+      prisma.t_Sigorta.aggregate({ where: allWhere, _sum: { primTutari: true } }),
+      prisma.t_Sigorta.aggregate({ where: { ...allWhere, odemeDurumu: { not: "odendi" } }, _sum: { primTutari: true } }),
+      prisma.t_Arac_Master.count({ where: { ...aracFilter, sigortalar: { none: {} } } }),
+    ]);
+
+    return NextResponse.json({
+      data,
+      pagination: { page, limit, total: aracTotal, totalPages: Math.ceil(aracTotal / limit) },
+      summary: {
+        toplamPolice,
+        suresiGecmis,
+        yaklasiyor,
+        toplamPrim: primStats._sum.primTutari || 0,
+        odenmemisPrim: odenmemisPrim._sum.primTutari || 0,
+        sigortasizCount,
+      },
+    });
+  }
+
+  // Normal sigorta records query
   const where = {
     AND: [
       { arac: aracFilter },
@@ -86,12 +163,13 @@ export async function GET(req: NextRequest) {
 
   // Summary stats — also filter by sigortaGerekli + not pasif
   const allWhere = { arac: aracFilter };
-  const [toplamPolice, suresiGecmis, yaklasiyor, primStats, odenmemisPrim] = await Promise.all([
+  const [toplamPolice, suresiGecmis, yaklasiyor, primStats, odenmemisPrim, sigortasizCount] = await Promise.all([
     prisma.t_Sigorta.count({ where: allWhere }),
     prisma.t_Sigorta.count({ where: { ...allWhere, bitisTarihi: { lt: now } } }),
     prisma.t_Sigorta.count({ where: { ...allWhere, bitisTarihi: { gte: now, lte: thirtyDaysFromNow } } }),
     prisma.t_Sigorta.aggregate({ where: allWhere, _sum: { primTutari: true } }),
     prisma.t_Sigorta.aggregate({ where: { ...allWhere, odemeDurumu: { not: "odendi" } }, _sum: { primTutari: true } }),
+    prisma.t_Arac_Master.count({ where: { ...aracFilter, sigortalar: { none: {} } } }),
   ]);
 
   return NextResponse.json({
@@ -108,6 +186,7 @@ export async function GET(req: NextRequest) {
       yaklasiyor,
       toplamPrim: primStats._sum.primTutari || 0,
       odenmemisPrim: odenmemisPrim._sum.primTutari || 0,
+      sigortasizCount,
     },
   });
 }

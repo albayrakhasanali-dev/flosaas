@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { ArrowLeft, Save, Trash2, Upload, FileText, X, Download, Eye, Plus, ExternalLink } from "lucide-react";
+import { ArrowLeft, Save, Trash2, Upload, FileText, X, Download, Eye, Plus, ExternalLink, Minus } from "lucide-react";
 
 interface Lookup {
   sirketler: { id: number; sirketAdi: string }[];
@@ -180,6 +180,8 @@ export default function AracFormClient({ aracId }: { aracId: string }) {
   const [muayeneler, setMuayeneler] = useState<MuayeneRecord[]>([]);
   const [sigortalar, setSigortalar] = useState<SigortaRecord[]>([]);
   const [showNewLokasyon, setShowNewLokasyon] = useState(false);
+  const [showDeleteLokasyon, setShowDeleteLokasyon] = useState(false);
+  const [deletingLokasyon, setDeletingLokasyon] = useState(false);
   const [showNewSirket, setShowNewSirket] = useState(false);
   const [newLokasyonAdi, setNewLokasyonAdi] = useState("");
   const [newSirketAdi, setNewSirketAdi] = useState("");
@@ -340,6 +342,32 @@ export default function AracFormClient({ aracId }: { aracId: string }) {
       setMessage({ type: "error", text: "Baglanti hatasi" });
     }
     setAddingLookup(false);
+  };
+
+  const handleDeleteLokasyon = async () => {
+    if (!form.lokasyonId) return;
+    setDeletingLokasyon(true);
+    try {
+      const res = await fetch(`/api/lokasyonlar?id=${form.lokasyonId}`, {
+        method: "DELETE",
+      });
+      if (res.ok) {
+        const deletedName = lookups?.lokasyonlar.find((l) => l.id === form.lokasyonId)?.lokasyonAdi;
+        setLookups((prev) => prev ? {
+          ...prev,
+          lokasyonlar: prev.lokasyonlar.filter((l) => l.id !== form.lokasyonId),
+        } : prev);
+        updateField("lokasyonId", null);
+        setShowDeleteLokasyon(false);
+        setMessage({ type: "success", text: `"${deletedName}" lokasyonu silindi` });
+      } else {
+        const err = await res.json();
+        setMessage({ type: "error", text: err.error || "Lokasyon silinemedi" });
+      }
+    } catch {
+      setMessage({ type: "error", text: "Baglanti hatasi" });
+    }
+    setDeletingLokasyon(false);
   };
 
   const handleAddSirket = async () => {
@@ -616,21 +644,55 @@ export default function AracFormClient({ aracId }: { aracId: string }) {
               <div>
                 <label className="block text-xs font-medium text-slate-600 mb-1">Lokasyon</label>
                 <div className="flex gap-1.5">
-                  <select value={form.lokasyonId || ""} onChange={(e) => updateField("lokasyonId", e.target.value ? Number(e.target.value) : null)} disabled={isFieldDisabled("lokasyonId")} className="flex-1 px-3 py-2 border border-slate-300 rounded-lg text-sm disabled:bg-slate-50">
+                  <select value={form.lokasyonId || ""} onChange={(e) => updateField("lokasyonId", e.target.value ? Number(e.target.value) : null)} disabled={isFieldDisabled("lokasyonId")} className="flex-1 min-w-0 px-3 py-2 border border-slate-300 rounded-lg text-sm disabled:bg-slate-50">
                     <option value="">Seciniz</option>
                     {lookups?.lokasyonlar.map((l) => <option key={l.id} value={l.id}>{l.lokasyonAdi}</option>)}
                   </select>
                   {!isLokasyonSefi && (
-                    <button
-                      type="button"
-                      onClick={() => setShowNewLokasyon(true)}
-                      className="px-2.5 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors flex-shrink-0"
-                      title="Yeni Lokasyon Ekle"
-                    >
-                      <Plus size={16} />
-                    </button>
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => setShowNewLokasyon(true)}
+                        className="px-2.5 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors flex-shrink-0"
+                        title="Yeni Lokasyon Ekle"
+                      >
+                        <Plus size={16} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => form.lokasyonId ? setShowDeleteLokasyon(true) : setMessage({ type: "error", text: "Silmek icin bir lokasyon seciniz" })}
+                        className="px-2.5 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors flex-shrink-0"
+                        title="Secili Lokasyonu Sil"
+                      >
+                        <Minus size={16} />
+                      </button>
+                    </>
                   )}
                 </div>
+                {showDeleteLokasyon && form.lokasyonId && (
+                  <div className="mt-2 p-3 bg-red-50 border border-red-200 rounded-lg">
+                    <p className="text-xs font-medium text-red-800 mb-2">
+                      &quot;{lookups?.lokasyonlar.find((l) => l.id === form.lokasyonId)?.lokasyonAdi}&quot; lokasyonunu silmek istediginize emin misiniz?
+                    </p>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={handleDeleteLokasyon}
+                        disabled={deletingLokasyon}
+                        className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-medium disabled:opacity-50"
+                      >
+                        {deletingLokasyon ? "Siliniyor..." : "Evet, Sil"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setShowDeleteLokasyon(false)}
+                        className="px-3 py-1.5 text-slate-600 hover:text-slate-800 border border-slate-300 rounded-lg text-xs font-medium"
+                      >
+                        Iptal
+                      </button>
+                    </div>
+                  </div>
+                )}
                 {showNewLokasyon && (
                   <div className="mt-2 p-3 bg-green-50 border border-green-200 rounded-lg">
                     <p className="text-xs font-medium text-green-800 mb-2">Yeni Lokasyon Ekle</p>

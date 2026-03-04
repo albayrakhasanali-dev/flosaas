@@ -27,16 +27,17 @@ interface SigortaArac {
 }
 
 interface Sigorta {
-  id: number;
-  sigortaTuru: string;
+  id: number | string;
+  sigortaTuru: string | null;
   policeNo: string | null;
   sigortaSirketi: string | null;
   acenteAdi: string | null;
-  baslangicTarihi: string;
-  bitisTarihi: string;
+  baslangicTarihi: string | null;
+  bitisTarihi: string | null;
   primTutari: number | null;
-  odemeDurumu: string;
+  odemeDurumu: string | null;
   odemeSekli: string | null;
+  sigortasiz?: boolean;
   arac: SigortaArac;
 }
 
@@ -49,6 +50,7 @@ interface SigortaResponse {
     yaklasiyor: number;
     toplamPrim: number;
     odenmemisPrim: number;
+    sigortasizCount: number;
   };
 }
 
@@ -140,15 +142,15 @@ export default function SigortaTakipClient() {
         plaka: s.arac.plaka,
         sirket: s.arac.sirket?.sirketAdi || "",
         lokasyon: s.arac.lokasyon?.lokasyonAdi || "",
-        sigortaTuru: sigortaTuruLabels[s.sigortaTuru] || s.sigortaTuru,
+        sigortaTuru: s.sigortasiz ? "SIGORTA YOK" : (s.sigortaTuru ? sigortaTuruLabels[s.sigortaTuru] || s.sigortaTuru : ""),
         policeNo: s.policeNo || "",
         sigortaSirketi: s.sigortaSirketi || "",
         acenteAdi: s.acenteAdi || "",
-        baslangicTarihi: formatDate(s.baslangicTarihi),
-        bitisTarihi: formatDate(s.bitisTarihi),
-        kalanGun: computeKalanGun(s.bitisTarihi),
+        baslangicTarihi: s.baslangicTarihi ? formatDate(s.baslangicTarihi) : "",
+        bitisTarihi: s.bitisTarihi ? formatDate(s.bitisTarihi) : "",
+        kalanGun: s.bitisTarihi ? computeKalanGun(s.bitisTarihi) : "",
         primTutari: s.primTutari || "",
-        odemeDurumu: odemeDurumuLabels[s.odemeDurumu] || s.odemeDurumu,
+        odemeDurumu: s.sigortasiz ? "" : (s.odemeDurumu ? odemeDurumuLabels[s.odemeDurumu] || s.odemeDurumu : ""),
         odemeSekli: s.odemeSekli || "",
       }));
 
@@ -205,7 +207,7 @@ export default function SigortaTakipClient() {
 
       {/* KPI Cards */}
       {data?.summary && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
           <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
             <div className="flex items-center justify-between">
               <div>
@@ -250,6 +252,22 @@ export default function SigortaTakipClient() {
               </div>
               <div className="w-10 h-10 rounded-lg bg-green-50 flex items-center justify-center">
                 <CheckCircle2 size={20} className="text-green-500" />
+              </div>
+            </div>
+          </div>
+          <div
+            className={`bg-white rounded-xl border p-4 shadow-sm cursor-pointer transition-colors ${
+              fDurum === "sigortasiz" ? "border-purple-400 bg-purple-50" : "border-purple-200 hover:border-purple-300"
+            }`}
+            onClick={() => setFDurum(fDurum === "sigortasiz" ? "" : "sigortasiz")}
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs text-purple-500">Sigortasiz Arac</p>
+                <p className="text-2xl font-bold text-purple-600 mt-1">{data.summary.sigortasizCount}</p>
+              </div>
+              <div className="w-10 h-10 rounded-lg bg-purple-50 flex items-center justify-center">
+                <AlertCircle size={20} className="text-purple-500" />
               </div>
             </div>
           </div>
@@ -336,6 +354,7 @@ export default function SigortaTakipClient() {
                 <option value="gecerli">Gecerli</option>
                 <option value="yaklasiyor">Yaklasiyor (30 Gun)</option>
                 <option value="suresi_gecmis">Suresi Gecmis</option>
+                <option value="sigortasiz">Sigortasiz Araclar</option>
               </select>
             </div>
           </div>
@@ -368,7 +387,39 @@ export default function SigortaTakipClient() {
                 </thead>
                 <tbody>
                   {data?.data.map((s) => {
-                    const kalanGun = computeKalanGun(s.bitisTarihi);
+                    // Sigortasız araç row
+                    if (s.sigortasiz) {
+                      return (
+                        <tr
+                          key={s.id}
+                          className="bg-purple-50 cursor-pointer hover:bg-purple-100"
+                          onClick={() => router.push(`/araclar/${s.arac.id}`)}
+                        >
+                          <td className="font-bold text-blue-600">{s.arac.plaka}</td>
+                          <td colSpan={7}>
+                            <div className="flex items-center gap-3">
+                              <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-purple-100 text-purple-700 text-xs font-bold">
+                                <AlertCircle size={14} />
+                                SIGORTA YOK
+                              </span>
+                              <span className="text-xs text-slate-500">
+                                {s.arac.sirket?.sirketAdi || ""} {s.arac.lokasyon ? `- ${s.arac.lokasyon.lokasyonAdi}` : ""}
+                              </span>
+                            </div>
+                          </td>
+                          <td>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); router.push(`/sigorta/new?aracId=${s.arac.id}`); }}
+                              className="text-xs bg-blue-600 text-white px-3 py-1 rounded-lg hover:bg-blue-700 transition-colors"
+                            >
+                              Police Ekle
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    }
+
+                    const kalanGun = s.bitisTarihi ? computeKalanGun(s.bitisTarihi) : 0;
                     const isExpired = kalanGun < 0;
                     const isNearExpiry = kalanGun >= 0 && kalanGun <= 30;
 
@@ -391,13 +442,13 @@ export default function SigortaTakipClient() {
                                 : "badge-neutral"
                             }`}
                           >
-                            {sigortaTuruLabels[s.sigortaTuru] || s.sigortaTuru}
+                            {sigortaTuruLabels[s.sigortaTuru || ""] || s.sigortaTuru}
                           </span>
                         </td>
                         <td className="text-xs font-mono">{s.policeNo || "-"}</td>
                         <td className="text-xs">{s.sigortaSirketi || "-"}</td>
-                        <td className="text-xs">{formatDate(s.baslangicTarihi)}</td>
-                        <td className="text-xs">{formatDate(s.bitisTarihi)}</td>
+                        <td className="text-xs">{s.baslangicTarihi ? formatDate(s.baslangicTarihi) : "-"}</td>
+                        <td className="text-xs">{s.bitisTarihi ? formatDate(s.bitisTarihi) : "-"}</td>
                         <td>
                           <span
                             className={`text-xs font-semibold ${
@@ -408,7 +459,7 @@ export default function SigortaTakipClient() {
                                 : "text-green-600"
                             }`}
                           >
-                            {kalanGun < 0 ? `${Math.abs(kalanGun)} gun gecmis` : `${kalanGun} gun`}
+                            {s.bitisTarihi ? (kalanGun < 0 ? `${Math.abs(kalanGun)} gun gecmis` : `${kalanGun} gun`) : "-"}
                           </span>
                         </td>
                         <td className="text-sm font-semibold">
@@ -424,7 +475,7 @@ export default function SigortaTakipClient() {
                                 : "badge-danger"
                             }`}
                           >
-                            {odemeDurumuLabels[s.odemeDurumu] || s.odemeDurumu}
+                            {odemeDurumuLabels[s.odemeDurumu || ""] || s.odemeDurumu}
                           </span>
                         </td>
                         <td>

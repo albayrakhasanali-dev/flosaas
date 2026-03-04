@@ -71,6 +71,7 @@ export async function GET(req: NextRequest) {
           select: {
             id: true,
             plaka: true,
+            k1YetkiBelgesi: true,
             sirket: { select: { sirketAdi: true } },
             lokasyon: { select: { lokasyonAdi: true } },
           },
