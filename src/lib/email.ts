@@ -44,7 +44,7 @@ async function createTransporter() {
 
   const host = resolvedHost || originalHost;
 
-  const opts: SMTPTransport.Options = {
+  const opts: SMTPTransport.Options & { servername?: string } = {
     host,
     port: Number(process.env.SMTP_PORT) || 465,
     secure: true,
@@ -53,6 +53,7 @@ async function createTransporter() {
       pass: process.env.SMTP_PASS,
     },
     name: "localhost",
+    servername: originalHost,
     tls: {
       servername: originalHost,
       rejectUnauthorized: true,
