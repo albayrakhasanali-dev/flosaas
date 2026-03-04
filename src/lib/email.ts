@@ -52,8 +52,10 @@ async function createTransporter() {
       user: process.env.SMTP_USER,
       pass: process.env.SMTP_PASS,
     },
+    name: "localhost",
     tls: {
       servername: originalHost,
+      rejectUnauthorized: true,
     },
   };
   return nodemailer.createTransport(opts);
