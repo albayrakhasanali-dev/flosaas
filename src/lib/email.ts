@@ -1,29 +1,51 @@
 import nodemailer from "nodemailer";
 import type SMTPTransport from "nodemailer/lib/smtp-transport";
-import dns from "dns";
-import net from "net";
 
-// Pre-resolve SMTP host via dns.resolve4 (c-ares, avoids getaddrinfo EBUSY)
-async function resolveHost(host: string): Promise<string> {
-  if (net.isIP(host)) return host;
+// Gmail SMTP IPs (used when all DNS methods fail on Vercel)
+const GMAIL_SMTP_IPS = [
+  "142.251.163.108", "142.251.163.109", "142.250.115.108", "142.250.115.109",
+  "173.194.76.108", "173.194.76.109", "74.125.200.108", "74.125.200.109",
+];
+
+// Resolve hostname via DNS-over-HTTPS (Cloudflare) — no getaddrinfo, no c-ares
+async function resolveViaDoH(hostname: string): Promise<string | null> {
   try {
-    const addresses = await dns.promises.resolve4(host);
-    if (addresses.length > 0) {
-      console.log(`DNS resolved ${host} -> ${addresses[0]}`);
-      return addresses[0];
+    const url = `https://cloudflare-dns.com/dns-query?name=${hostname}&type=A`;
+    const res = await fetch(url, {
+      headers: { Accept: "application/dns-json" },
+      signal: AbortSignal.timeout(5000),
+    });
+    const data = await res.json();
+    const answers = (data as { Answer?: { type: number; data: string }[] }).Answer;
+    if (answers && answers.length > 0) {
+      const aRecord = answers.find((a: { type: number }) => a.type === 1);
+      if (aRecord) {
+        console.log(`DoH resolved ${hostname} -> ${aRecord.data}`);
+        return aRecord.data;
+      }
     }
   } catch (e) {
-    console.warn(`DNS resolve4 failed for ${host}, using hostname:`, e);
+    console.warn(`DoH resolve failed for ${hostname}:`, e);
   }
-  return host;
+  return null;
 }
 
 async function createTransporter() {
   const originalHost = process.env.SMTP_HOST || "smtp.gmail.com";
-  const resolvedHost = await resolveHost(originalHost);
+
+  // Resolve via DoH to completely bypass OS DNS (getaddrinfo EBUSY on Vercel)
+  let resolvedHost = await resolveViaDoH(originalHost);
+
+  // Fallback to hardcoded Gmail IPs
+  if (!resolvedHost && (originalHost.includes("gmail") || originalHost.includes("google"))) {
+    resolvedHost = GMAIL_SMTP_IPS[Math.floor(Math.random() * GMAIL_SMTP_IPS.length)];
+    console.log(`Using fallback Gmail IP: ${resolvedHost}`);
+  }
+
+  const host = resolvedHost || originalHost;
 
   const opts: SMTPTransport.Options = {
-    host: resolvedHost,
+    host,
     port: Number(process.env.SMTP_PORT) || 587,
     secure: false,
     auth: {
