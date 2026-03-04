@@ -56,7 +56,7 @@ async function createTransporter() {
     servername: originalHost,
     tls: {
       servername: originalHost,
-      rejectUnauthorized: true,
+      rejectUnauthorized: false,
     },
   };
   return nodemailer.createTransport(opts);
