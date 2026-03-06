@@ -96,7 +96,7 @@ export async function PUT(
   return NextResponse.json(enrichAracWithComputed(updated));
 }
 
-// PATCH: Araç Satış İşlemi
+// PATCH: Araç Satış / Satış Geri Alma İşlemi
 export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -104,7 +104,7 @@ export async function PATCH(
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  // Only super_admin and sirket_yoneticisi can sell vehicles
+  // Only super_admin and sirket_yoneticisi can sell/unsell vehicles
   if (!["super_admin", "sirket_yoneticisi"].includes(user.role)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
@@ -112,19 +112,40 @@ export async function PATCH(
   const { id } = await params;
   const body = await req.json();
 
-  // Find SATILDI status
+  const rbacWhere = buildWhereClause(user);
+  const existing = await prisma.t_Arac_Master.findFirst({
+    where: { id: parseInt(id), ...rbacWhere },
+  });
+  if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  // Geri Al (undo sell) — revert to AKTİF, clear sale data
+  if (body.action === "geri_al") {
+    const aktifDurum = await prisma.t_Durum.findUnique({
+      where: { durumAdi: "🟢 AKTİF" },
+    });
+    if (!aktifDurum) {
+      return NextResponse.json({ error: "AKTİF durumu bulunamadi" }, { status: 500 });
+    }
+
+    const updated = await prisma.t_Arac_Master.update({
+      where: { id: parseInt(id) },
+      data: {
+        durumId: aktifDurum.id,
+        satisTarihi: null,
+        satisNotu: null,
+      },
+      include: { durum: true, sirket: true, lokasyon: true },
+    });
+    return NextResponse.json(enrichAracWithComputed(updated));
+  }
+
+  // Satış işlemi — mark as SATILDI
   const satildiDurum = await prisma.t_Durum.findUnique({
     where: { durumAdi: "🟣 SATILDI" },
   });
   if (!satildiDurum) {
     return NextResponse.json({ error: "SATILDI durumu bulunamadi" }, { status: 500 });
   }
-
-  const rbacWhere = buildWhereClause(user);
-  const existing = await prisma.t_Arac_Master.findFirst({
-    where: { id: parseInt(id), ...rbacWhere },
-  });
-  if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   const updated = await prisma.t_Arac_Master.update({
     where: { id: parseInt(id) },

@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { Search, Plus, ChevronLeft, ChevronRight, Eye, Filter, X, DollarSign } from "lucide-react";
+import { Search, Plus, ChevronLeft, ChevronRight, Eye, Filter, X, DollarSign, Undo2 } from "lucide-react";
 
 interface Arac {
   id: number;
@@ -72,6 +72,10 @@ export default function FiloClient() {
   const [sellNote, setSellNote] = useState("");
   const [sellLoading, setSellLoading] = useState(false);
 
+  // Undo sell dialog state
+  const [undoDialog, setUndoDialog] = useState<{ open: boolean; arac: Arac | null }>({ open: false, arac: null });
+  const [undoLoading, setUndoLoading] = useState(false);
+
   const canSell = userRole === "super_admin" || userRole === "sirket_yoneticisi";
 
   const handleSell = async () => {
@@ -90,6 +94,24 @@ export default function FiloClient() {
       }
     } finally {
       setSellLoading(false);
+    }
+  };
+
+  const handleUndoSell = async () => {
+    if (!undoDialog.arac) return;
+    setUndoLoading(true);
+    try {
+      const res = await fetch(`/api/araclar/${undoDialog.arac.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "geri_al" }),
+      });
+      if (res.ok) {
+        setUndoDialog({ open: false, arac: null });
+        fetchData();
+      }
+    } finally {
+      setUndoLoading(false);
     }
   };
 
@@ -435,6 +457,18 @@ export default function FiloClient() {
                               <DollarSign size={16} />
                             </button>
                           )}
+                          {canSell && a.durum?.durumAdi === "🟣 SATILDI" && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setUndoDialog({ open: true, arac: a });
+                              }}
+                              className="text-slate-400 hover:text-green-600"
+                              title="Satisi Geri Al"
+                            >
+                              <Undo2 size={16} />
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -523,6 +557,38 @@ export default function FiloClient() {
                 className="flex-1 px-4 py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
               >
                 {sellLoading ? "Isleniyor..." : "Satisi Onayla"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Undo Sell Dialog */}
+      {undoDialog.open && undoDialog.arac && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl p-6 w-full max-w-md shadow-xl">
+            <h3 className="text-lg font-bold text-slate-800 mb-1">Satisi Geri Al</h3>
+            <p className="text-sm text-slate-500 mb-4">
+              <span className="font-semibold text-green-600">{undoDialog.arac.plaka}</span> plakali aracin satisi geri alinacak ve durum <span className="font-semibold text-green-600">AKTİF</span> olarak degistirilecek.
+            </p>
+            {undoDialog.arac.satisNotu && (
+              <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 mb-4 text-sm text-slate-600">
+                <span className="font-medium">Satis Notu:</span> {undoDialog.arac.satisNotu}
+              </div>
+            )}
+            <div className="flex gap-3">
+              <button
+                onClick={() => setUndoDialog({ open: false, arac: null })}
+                className="flex-1 px-4 py-2.5 border border-slate-300 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors"
+              >
+                Iptal
+              </button>
+              <button
+                onClick={handleUndoSell}
+                disabled={undoLoading}
+                className="flex-1 px-4 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+              >
+                {undoLoading ? "Isleniyor..." : "Geri Al"}
               </button>
             </div>
           </div>

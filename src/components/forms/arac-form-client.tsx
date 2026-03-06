@@ -513,16 +513,38 @@ export default function AracFormClient({ aracId }: { aracId: string }) {
       {/* Sold Banner */}
       {satisBilgi.isSatildi && (
         <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
-          <div className="flex items-center gap-2 mb-1">
-            <span className="text-lg">🟣</span>
-            <h3 className="font-bold text-purple-800">Bu arac satilmistir</h3>
-          </div>
-          <div className="text-sm text-purple-700 space-y-1">
-            {satisBilgi.satisTarihi && (
-              <p><span className="font-medium">Satis Tarihi:</span> {new Date(satisBilgi.satisTarihi).toLocaleDateString("tr-TR")}</p>
-            )}
-            {satisBilgi.satisNotu && (
-              <p><span className="font-medium">Not:</span> {satisBilgi.satisNotu}</p>
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-lg">🟣</span>
+                <h3 className="font-bold text-purple-800">Bu arac satilmistir</h3>
+              </div>
+              <div className="text-sm text-purple-700 space-y-1">
+                {satisBilgi.satisTarihi && (
+                  <p><span className="font-medium">Satis Tarihi:</span> {new Date(satisBilgi.satisTarihi).toLocaleDateString("tr-TR")}</p>
+                )}
+                {satisBilgi.satisNotu && (
+                  <p><span className="font-medium">Not:</span> {satisBilgi.satisNotu}</p>
+                )}
+              </div>
+            </div>
+            {(userRole === "super_admin" || userRole === "sirket_yoneticisi") && (
+              <button
+                onClick={async () => {
+                  if (!confirm("Satisi geri almak istediginize emin misiniz? Arac AKTİF durumuna donecektir.")) return;
+                  const res = await fetch(`/api/araclar/${aracId}`, {
+                    method: "PATCH",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ action: "geri_al" }),
+                  });
+                  if (res.ok) {
+                    router.push("/filo?filter=all");
+                  }
+                }}
+                className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
+              >
+                ↩ Satisi Geri Al
+              </button>
             )}
           </div>
         </div>
