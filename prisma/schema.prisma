@@ -89,6 +89,8 @@ model T_Arac_Master {
   k1YetkiBelgesi        String?   @map("k1_yetki_belgesi") // var, yok
   muayeneGerekli        Boolean   @default(true) @map("muayene_gerekli")
   sigortaGerekli        Boolean   @default(true) @map("sigorta_gerekli")
+  satisTarihi           DateTime? @map("satis_tarihi")
+  satisNotu             String?   @map("satis_notu")
   tekerSayisi           Int?      @map("teker_sayisi")
   aracKategorisi        String?   @map("arac_kategorisi")
   belgelerDosyalar      String?   @map("belgeler_dosyalar") // JSON array of file paths

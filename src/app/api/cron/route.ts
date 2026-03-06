@@ -188,7 +188,7 @@ async function handleWeeklyReport(force = false) {
       }
 
       const aracBaseWhere = {
-        durum: { durumAdi: { notIn: ["⚫ YATAN", "🟡 BAKIMDA"] } },
+        durum: { durumAdi: { notIn: ["⚫ YATAN", "🟡 BAKIMDA", "🟣 SATILDI"] } },
       };
 
       const reportData: WeeklyReportData = {
@@ -350,7 +350,7 @@ async function handleWeeklyReportDefault() {
   thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
 
   const aracBaseWhere = {
-    durum: { durumAdi: { notIn: ["⚫ YATAN", "🟡 BAKIMDA"] } },
+    durum: { durumAdi: { notIn: ["⚫ YATAN", "🟡 BAKIMDA", "🟣 SATILDI"] } },
   };
 
   const [suresiGecmisMuayeneler, yaklasanMuayeneler, suresiGecmisSigortalar, yaklasanSigortalar] = await Promise.all([

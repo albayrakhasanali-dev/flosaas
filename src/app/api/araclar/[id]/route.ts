@@ -96,6 +96,49 @@ export async function PUT(
   return NextResponse.json(enrichAracWithComputed(updated));
 }
 
+// PATCH: Araç Satış İşlemi
+export async function PATCH(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const user = await getCurrentUser();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  // Only super_admin and sirket_yoneticisi can sell vehicles
+  if (!["super_admin", "sirket_yoneticisi"].includes(user.role)) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  const { id } = await params;
+  const body = await req.json();
+
+  // Find SATILDI status
+  const satildiDurum = await prisma.t_Durum.findUnique({
+    where: { durumAdi: "🟣 SATILDI" },
+  });
+  if (!satildiDurum) {
+    return NextResponse.json({ error: "SATILDI durumu bulunamadi" }, { status: 500 });
+  }
+
+  const rbacWhere = buildWhereClause(user);
+  const existing = await prisma.t_Arac_Master.findFirst({
+    where: { id: parseInt(id), ...rbacWhere },
+  });
+  if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  const updated = await prisma.t_Arac_Master.update({
+    where: { id: parseInt(id) },
+    data: {
+      durumId: satildiDurum.id,
+      satisTarihi: body.satisTarihi ? new Date(body.satisTarihi) : new Date(),
+      satisNotu: body.satisNotu || null,
+    },
+    include: { durum: true, sirket: true, lokasyon: true },
+  });
+
+  return NextResponse.json(enrichAracWithComputed(updated));
+}
+
 export async function DELETE(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }

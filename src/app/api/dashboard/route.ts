@@ -9,9 +9,13 @@ export async function GET() {
 
   const rbacWhere = buildWhereClause(user);
 
+  // Exclude SATILDI from dashboard counts
+  const notSatildi = { durum: { durumAdi: { not: "🟣 SATILDI" } } };
+  const baseWhere = { AND: [rbacWhere, notSatildi] };
+
   // KPI counts
   const [toplam, aktif, yatan, uttsEksik, allAraclar] = await Promise.all([
-    prisma.t_Arac_Master.count({ where: rbacWhere }),
+    prisma.t_Arac_Master.count({ where: baseWhere }),
     prisma.t_Arac_Master.count({
       where: { ...rbacWhere, durum: { durumAdi: "🟢 AKTİF" } },
     }),
@@ -19,10 +23,10 @@ export async function GET() {
       where: { ...rbacWhere, durum: { durumAdi: "⚫ YATAN" } },
     }),
     prisma.t_Arac_Master.count({
-      where: { ...rbacWhere, uttsDurum: "Eksik" },
+      where: { AND: [rbacWhere, notSatildi, { uttsDurum: "Eksik" }] },
     }),
     prisma.t_Arac_Master.findMany({
-      where: rbacWhere,
+      where: baseWhere,
       include: { durum: true, sirket: true, lokasyon: true },
     }),
   ]);

@@ -2,7 +2,8 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { Search, Plus, ChevronLeft, ChevronRight, Eye, Filter, X } from "lucide-react";
+import { useSession } from "next-auth/react";
+import { Search, Plus, ChevronLeft, ChevronRight, Eye, Filter, X, DollarSign } from "lucide-react";
 
 interface Arac {
   id: number;
@@ -18,6 +19,8 @@ interface Arac {
   sigortaAlarm: string;
   muayeneKalanGun: number | null;
   sigortaKalanGun: number | null;
+  satisTarihi: string | null;
+  satisNotu: string | null;
 }
 
 interface PaginatedResponse {
@@ -38,12 +41,15 @@ const filterLabels: Record<string, string> = {
   pasif: "⚫ Pasif / Yatan Araclar",
   hukuki: "🔴 Hukuki ve Satis",
   utts_eksik: "⚠️ UTTS Montaj Bekleyenler",
+  satildi: "🟣 Satilan Araclar",
 };
 
 export default function FiloClient() {
   const searchParams = useSearchParams();
   const router = useRouter();
+  const { data: session } = useSession();
   const filter = searchParams.get("filter") || "all";
+  const userRole = (session?.user as Record<string, unknown>)?.role as string;
 
   const [data, setData] = useState<PaginatedResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -59,6 +65,33 @@ export default function FiloClient() {
   const [fKullanim, setFKullanim] = useState("");
   const [fMulkiyet, setFMulkiyet] = useState("");
   const [fUtts, setFUtts] = useState("");
+
+  // Sell dialog state
+  const [sellDialog, setSellDialog] = useState<{ open: boolean; arac: Arac | null }>({ open: false, arac: null });
+  const [sellDate, setSellDate] = useState(new Date().toISOString().split("T")[0]);
+  const [sellNote, setSellNote] = useState("");
+  const [sellLoading, setSellLoading] = useState(false);
+
+  const canSell = userRole === "super_admin" || userRole === "sirket_yoneticisi";
+
+  const handleSell = async () => {
+    if (!sellDialog.arac) return;
+    setSellLoading(true);
+    try {
+      const res = await fetch(`/api/araclar/${sellDialog.arac.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ satisTarihi: sellDate, satisNotu: sellNote }),
+      });
+      if (res.ok) {
+        setSellDialog({ open: false, arac: null });
+        setSellNote("");
+        fetchData();
+      }
+    } finally {
+      setSellLoading(false);
+    }
+  };
 
   // Count active filters
   const activeFilterCount = [fLokasyon, fSirket, fDurum, fKullanim, fMulkiyet, fUtts].filter(Boolean).length;
@@ -342,6 +375,7 @@ export default function FiloClient() {
                           a.durum?.durumAdi.includes("AKTİF") ? "badge-success" :
                           a.durum?.durumAdi.includes("HUKUKİ") ? "badge-danger" :
                           a.durum?.durumAdi.includes("BAKIMDA") ? "badge-warning" :
+                          a.durum?.durumAdi.includes("SATILDI") ? "bg-purple-100 text-purple-700" :
                           "badge-neutral"
                         }`}>
                           {a.durum?.durumAdi || "-"}
@@ -383,9 +417,25 @@ export default function FiloClient() {
                         </span>
                       </td>
                       <td>
-                        <button className="text-slate-400 hover:text-blue-600">
-                          <Eye size={16} />
-                        </button>
+                        <div className="flex items-center gap-1">
+                          <button className="text-slate-400 hover:text-blue-600" title="Goruntule">
+                            <Eye size={16} />
+                          </button>
+                          {canSell && a.durum?.durumAdi !== "🟣 SATILDI" && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSellDate(new Date().toISOString().split("T")[0]);
+                                setSellNote("");
+                                setSellDialog({ open: true, arac: a });
+                              }}
+                              className="text-slate-400 hover:text-purple-600"
+                              title="Arac Sat"
+                            >
+                              <DollarSign size={16} />
+                            </button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -427,6 +477,57 @@ export default function FiloClient() {
           </>
         )}
       </div>
+
+      {/* Sell Dialog */}
+      {sellDialog.open && sellDialog.arac && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl p-6 w-full max-w-md shadow-xl">
+            <h3 className="text-lg font-bold text-slate-800 mb-1">Arac Satisi</h3>
+            <p className="text-sm text-slate-500 mb-4">
+              <span className="font-semibold text-purple-600">{sellDialog.arac.plaka}</span> plakali araci satildi olarak isaretleyeceksiniz.
+            </p>
+
+            <div className="space-y-3">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Satis Tarihi</label>
+                <input
+                  type="date"
+                  value={sellDate}
+                  onChange={(e) => setSellDate(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Satis Notu</label>
+                <textarea
+                  value={sellNote}
+                  onChange={(e) => setSellNote(e.target.value)}
+                  placeholder="Alici bilgisi, fiyat, aciklama..."
+                  rows={3}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none resize-none"
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-3 mt-5">
+              <button
+                onClick={() => setSellDialog({ open: false, arac: null })}
+                className="flex-1 px-4 py-2.5 border border-slate-300 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors"
+              >
+                Iptal
+              </button>
+              <button
+                onClick={handleSell}
+                disabled={sellLoading}
+                className="flex-1 px-4 py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+              >
+                {sellLoading ? "Isleniyor..." : "Satisi Onayla"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

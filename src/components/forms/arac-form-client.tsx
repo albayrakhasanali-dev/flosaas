@@ -179,6 +179,7 @@ export default function AracFormClient({ aracId }: { aracId: string }) {
   const [uploadBelgeTipi, setUploadBelgeTipi] = useState("ruhsat");
   const [muayeneler, setMuayeneler] = useState<MuayeneRecord[]>([]);
   const [sigortalar, setSigortalar] = useState<SigortaRecord[]>([]);
+  const [satisBilgi, setSatisBilgi] = useState<{ satisTarihi: string | null; satisNotu: string | null; isSatildi: boolean }>({ satisTarihi: null, satisNotu: null, isSatildi: false });
   const [showNewLokasyon, setShowNewLokasyon] = useState(false);
   const [showDeleteLokasyon, setShowDeleteLokasyon] = useState(false);
   const [deletingLokasyon, setDeletingLokasyon] = useState(false);
@@ -236,6 +237,13 @@ export default function AracFormClient({ aracId }: { aracId: string }) {
           sigortaAlarm: aracRes.sigortaAlarm,
           muayeneKalanGun: aracRes.muayeneKalanGun,
           sigortaKalanGun: aracRes.sigortaKalanGun,
+        });
+        // Check if vehicle is sold
+        const durumAdi = aracRes.durum?.durumAdi || "";
+        setSatisBilgi({
+          satisTarihi: aracRes.satisTarihi || null,
+          satisNotu: aracRes.satisNotu || null,
+          isSatildi: durumAdi.includes("SATILDI"),
         });
       }
       // Load belgeler + muayene/sigorta history
@@ -501,6 +509,24 @@ export default function AracFormClient({ aracId }: { aracId: string }) {
           </button>
         </div>
       </div>
+
+      {/* Sold Banner */}
+      {satisBilgi.isSatildi && (
+        <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-lg">🟣</span>
+            <h3 className="font-bold text-purple-800">Bu arac satilmistir</h3>
+          </div>
+          <div className="text-sm text-purple-700 space-y-1">
+            {satisBilgi.satisTarihi && (
+              <p><span className="font-medium">Satis Tarihi:</span> {new Date(satisBilgi.satisTarihi).toLocaleDateString("tr-TR")}</p>
+            )}
+            {satisBilgi.satisNotu && (
+              <p><span className="font-medium">Not:</span> {satisBilgi.satisNotu}</p>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Message */}
       {message && (
