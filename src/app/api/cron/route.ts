@@ -151,7 +151,9 @@ async function handleWeeklyReport(force = false) {
     }
 
     const now = new Date();
-    const currentDay = now.getUTCDay(); // 0=Sun, 1=Mon, ..., 6=Sat
+    // Use Turkey timezone (UTC+3) for day check
+    const turkeyTime = new Date(now.toLocaleString("en-US", { timeZone: "Europe/Istanbul" }));
+    const currentDay = turkeyTime.getDay(); // 0=Sun, 1=Mon, ..., 6=Sat
     const results: string[] = [];
 
     for (const ayar of mailAyarlari) {
