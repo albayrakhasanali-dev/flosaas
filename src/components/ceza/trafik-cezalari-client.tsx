@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import {
   Search,
   Plus,
@@ -83,6 +84,9 @@ const formatDate = (date: string) =>
 
 export default function TrafikCezalariClient() {
   const router = useRouter();
+  const { data: session } = useSession();
+  const userRole = (session?.user as Record<string, unknown>)?.role as string;
+  const isAdmin = userRole === "super_admin" || userRole === "sirket_yoneticisi";
   const [data, setData] = useState<CezaResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -189,14 +193,16 @@ export default function TrafikCezalariClient() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <button
-            onClick={handleExport}
-            disabled={exporting || !data?.data.length}
-            className="flex items-center gap-2 px-4 py-2.5 border border-slate-300 text-slate-600 hover:bg-slate-50 rounded-lg text-sm font-medium transition-colors disabled:opacity-40"
-          >
-            <FileDown size={16} />
-            {exporting ? "Hazirlaniyor..." : "Excel Indir"}
-          </button>
+          {isAdmin && (
+            <button
+              onClick={handleExport}
+              disabled={exporting || !data?.data.length}
+              className="flex items-center gap-2 px-4 py-2.5 border border-slate-300 text-slate-600 hover:bg-slate-50 rounded-lg text-sm font-medium transition-colors disabled:opacity-40"
+            >
+              <FileDown size={16} />
+              {exporting ? "Hazirlaniyor..." : "Excel Indir"}
+            </button>
+          )}
           <button
             onClick={() => router.push("/ceza/new")}
             className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-4 py-2.5 rounded-lg text-sm font-medium transition-colors"

@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import {
   Search,
   Plus,
@@ -77,6 +78,9 @@ const computeKalanGun = (bitisTarihi: string) => {
 
 export default function MuayeneTakipClient() {
   const router = useRouter();
+  const { data: session } = useSession();
+  const userRole = (session?.user as Record<string, unknown>)?.role as string;
+  const isAdmin = userRole === "super_admin" || userRole === "sirket_yoneticisi";
   const [data, setData] = useState<MuayeneResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -186,14 +190,16 @@ export default function MuayeneTakipClient() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <button
-            onClick={handleExport}
-            disabled={exporting || !data?.data.length}
-            className="flex items-center gap-2 px-4 py-2.5 border border-green-300 text-green-700 bg-green-50 hover:bg-green-100 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
-          >
-            <Download size={16} />
-            {exporting ? "Hazirlaniyor..." : "Excel Indir"}
-          </button>
+          {isAdmin && (
+            <button
+              onClick={handleExport}
+              disabled={exporting || !data?.data.length}
+              className="flex items-center gap-2 px-4 py-2.5 border border-green-300 text-green-700 bg-green-50 hover:bg-green-100 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+            >
+              <Download size={16} />
+              {exporting ? "Hazirlaniyor..." : "Excel Indir"}
+            </button>
+          )}
           <button
             onClick={() => router.push("/muayene/new")}
             className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2.5 rounded-lg text-sm font-medium transition-colors"

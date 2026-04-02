@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import {
   Search,
   Plus,
@@ -81,6 +82,9 @@ const computeKalanGun = (bitisTarihi: string) => {
 
 export default function SigortaTakipClient() {
   const router = useRouter();
+  const { data: session } = useSession();
+  const userRole = (session?.user as Record<string, unknown>)?.role as string;
+  const isAdmin = userRole === "super_admin" || userRole === "sirket_yoneticisi";
   const [data, setData] = useState<SigortaResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -187,14 +191,16 @@ export default function SigortaTakipClient() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <button
-            onClick={handleExport}
-            disabled={exporting || !data?.data.length}
-            className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white px-4 py-2.5 rounded-lg text-sm font-medium transition-colors"
-          >
-            <Download size={16} />
-            {exporting ? "Indiriliyor..." : "Excel Indir"}
-          </button>
+          {isAdmin && (
+            <button
+              onClick={handleExport}
+              disabled={exporting || !data?.data.length}
+              className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white px-4 py-2.5 rounded-lg text-sm font-medium transition-colors"
+            >
+              <Download size={16} />
+              {exporting ? "Indiriliyor..." : "Excel Indir"}
+            </button>
+          )}
           <button
             onClick={() => router.push("/sigorta/new")}
             className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-lg text-sm font-medium transition-colors"

@@ -233,14 +233,16 @@ export default function FiloClient() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <button
-            onClick={handleExport}
-            disabled={exporting || !data?.data.length}
-            className="flex items-center gap-2 px-4 py-2.5 border border-slate-300 text-slate-600 hover:bg-slate-50 rounded-lg text-sm font-medium transition-colors disabled:opacity-40"
-          >
-            <FileDown size={16} />
-            {exporting ? "Hazirlaniyor..." : "Excel Indir"}
-          </button>
+          {canSell && (
+            <button
+              onClick={handleExport}
+              disabled={exporting || !data?.data.length}
+              className="flex items-center gap-2 px-4 py-2.5 border border-slate-300 text-slate-600 hover:bg-slate-50 rounded-lg text-sm font-medium transition-colors disabled:opacity-40"
+            >
+              <FileDown size={16} />
+              {exporting ? "Hazirlaniyor..." : "Excel Indir"}
+            </button>
+          )}
           <button
             onClick={() => router.push("/arac/new")}
             className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-lg text-sm font-medium transition-colors"
