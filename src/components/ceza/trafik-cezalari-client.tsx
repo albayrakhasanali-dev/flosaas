@@ -15,7 +15,9 @@ import {
   Clock,
   TrendingUp,
   Ban,
+  FileDown,
 } from "lucide-react";
+import { exportToExcel } from "@/lib/excel-export";
 
 interface CezaArac {
   id: number;
@@ -91,7 +93,62 @@ export default function TrafikCezalariClient() {
   const [fOdemeDurumu, setFOdemeDurumu] = useState("");
   const [fCezaTuru, setFCezaTuru] = useState("");
 
+  const [exporting, setExporting] = useState(false);
+
   const activeFilterCount = [fOdemeDurumu, fCezaTuru].filter(Boolean).length;
+
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      const params = new URLSearchParams();
+      if (search) params.set("search", search);
+      params.set("limit", "5000");
+      if (fOdemeDurumu) params.set("odemeDurumu", fOdemeDurumu);
+      if (fCezaTuru) params.set("cezaTuru", fCezaTuru);
+
+      const res = await fetch(`/api/cezalar?${params}`);
+      const json = await res.json();
+
+      const rows = (json.data || []).map((c: Ceza) => ({
+        plaka: c.plaka || c.arac.plaka,
+        tutanakNo: c.tutanakNo || "",
+        cezaTarihi: formatDate(c.cezaTarihi),
+        cezaTuru: cezaTuruLabels[c.cezaTuru] || c.cezaTuru,
+        cezaTutari: c.cezaTutari,
+        indirimlitutar: c.indirimlitutar || "",
+        odemeDurumu: odemeDurumuLabels[c.odemeDurumu] || c.odemeDurumu,
+        sonOdemeTarihi: c.sonOdemeTarihi ? formatDate(c.sonOdemeTarihi) : "",
+        sorumluKisi: c.sorumluKisi || "",
+        ihlalYeri: c.ihlalYeri || "",
+        kaynakKurum: c.kaynakKurum || "",
+        itirazDurumu: c.itirazDurumu === "yapildi" ? "Yapildi" :
+                      c.itirazDurumu === "kabul" ? "Kabul" :
+                      c.itirazDurumu === "red" ? "Red" : "Yapilmadi",
+        sirket: c.arac.sirket?.sirketAdi || "",
+        lokasyon: c.arac.lokasyon?.lokasyonAdi || "",
+      }));
+
+      exportToExcel(rows, [
+        { header: "Plaka", key: "plaka", width: 14 },
+        { header: "Tutanak No", key: "tutanakNo", width: 18 },
+        { header: "Ceza Tarihi", key: "cezaTarihi", width: 14 },
+        { header: "Ceza Turu", key: "cezaTuru", width: 16 },
+        { header: "Tutar (TL)", key: "cezaTutari", width: 12 },
+        { header: "Indirimli (TL)", key: "indirimlitutar", width: 14 },
+        { header: "Odeme Durumu", key: "odemeDurumu", width: 14 },
+        { header: "Son Odeme", key: "sonOdemeTarihi", width: 14 },
+        { header: "Sorumlu Kisi", key: "sorumluKisi", width: 20 },
+        { header: "Ihlal Yeri", key: "ihlalYeri", width: 25 },
+        { header: "Kurum", key: "kaynakKurum", width: 14 },
+        { header: "Itiraz", key: "itirazDurumu", width: 12 },
+        { header: "Sirket", key: "sirket", width: 25 },
+        { header: "Lokasyon", key: "lokasyon", width: 20 },
+      ], `Trafik_Cezalari_${new Date().toISOString().split("T")[0]}`);
+    } catch {
+      alert("Excel export sirasinda hata olustu");
+    }
+    setExporting(false);
+  };
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -131,13 +188,23 @@ export default function TrafikCezalariClient() {
             {data ? `${data.pagination.total} ceza kaydi` : "Yukleniyor..."}
           </p>
         </div>
-        <button
-          onClick={() => router.push("/ceza/new")}
-          className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-4 py-2.5 rounded-lg text-sm font-medium transition-colors"
-        >
-          <Plus size={16} />
-          Yeni Ceza Ekle
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleExport}
+            disabled={exporting || !data?.data.length}
+            className="flex items-center gap-2 px-4 py-2.5 border border-slate-300 text-slate-600 hover:bg-slate-50 rounded-lg text-sm font-medium transition-colors disabled:opacity-40"
+          >
+            <FileDown size={16} />
+            {exporting ? "Hazirlaniyor..." : "Excel Indir"}
+          </button>
+          <button
+            onClick={() => router.push("/ceza/new")}
+            className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-4 py-2.5 rounded-lg text-sm font-medium transition-colors"
+          >
+            <Plus size={16} />
+            Yeni Ceza Ekle
+          </button>
+        </div>
       </div>
 
       {/* KPI Cards */}

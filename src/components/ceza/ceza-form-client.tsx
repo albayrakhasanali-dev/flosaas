@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Save, Trash2, FileText, Upload, X } from "lucide-react";
+import { ArrowLeft, Save, Trash2, FileText, Upload, X, Download } from "lucide-react";
 
 interface AracOption {
   id: number;
@@ -93,6 +93,7 @@ export default function CezaFormClient({ cezaId }: { cezaId?: string }) {
   const [dekontFile, setDekontFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [showAracDropdown, setShowAracDropdown] = useState(false);
+  const [belgeler, setBelgeler] = useState<{ id: number; dosyaAdi: string; dosyaBoyut: number; aciklama: string | null; createdAt: string }[]>([]);
   const aracDropdownRef = useRef<HTMLDivElement>(null);
 
   // Close dropdown on outside click
@@ -153,6 +154,18 @@ export default function CezaFormClient({ cezaId }: { cezaId?: string }) {
             kaynakKurum: data.kaynakKurum || "",
             notlar: data.notlar || "",
           });
+          // Load attached documents
+          if (data.aracId) {
+            fetch(`/api/belgeler?aracId=${data.aracId}`)
+              .then((r) => r.json())
+              .then((docs) => {
+                const cezaDocs = (docs || []).filter((d: { aciklama: string | null }) =>
+                  d.aciklama?.includes("Ceza") || d.aciklama?.includes("Dekont")
+                );
+                setBelgeler(cezaDocs);
+              })
+              .catch(() => {});
+          }
           setLoading(false);
         })
         .catch(() => setLoading(false));
@@ -632,36 +645,6 @@ export default function CezaFormClient({ cezaId }: { cezaId?: string }) {
                     className={inputClass}
                   />
                 </div>
-                {/* Dekont Dosyasi */}
-                <div className="md:col-span-2">
-                  <label className={labelClass}>Dekont / Odeme Belgesi</label>
-                  <div className="flex items-center gap-3">
-                    <label className="flex items-center gap-2 px-4 py-2.5 border border-dashed border-slate-300 rounded-lg text-sm text-slate-500 hover:border-blue-400 hover:text-blue-600 cursor-pointer transition-colors">
-                      <Upload size={16} />
-                      {dekontFile ? dekontFile.name : "Dekont dosyasi sec (PDF/Gorsel)"}
-                      <input
-                        type="file"
-                        accept=".pdf,.jpg,.jpeg,.png,.webp"
-                        className="hidden"
-                        onChange={(e) => setDekontFile(e.target.files?.[0] || null)}
-                      />
-                    </label>
-                    {dekontFile && (
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs text-slate-400">
-                          {(dekontFile.size / 1024).toFixed(0)} KB
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => setDekontFile(null)}
-                          className="text-slate-400 hover:text-red-500"
-                        >
-                          <X size={14} />
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                </div>
               </>
             )}
             {/* Tahsilat ozet bilgisi (odenmemis iken) */}
@@ -671,6 +654,79 @@ export default function CezaFormClient({ cezaId }: { cezaId?: string }) {
                   <span className="font-semibold">Sorumlu:</span> {form.sorumluKisi}
                   {form.sonOdemeTarihi && ` | Son odeme: ${new Date(form.sonOdemeTarihi).toLocaleDateString("tr-TR")}`}
                 </p>
+              </div>
+            )}
+            {/* Dekont / Odeme Belgesi - her zaman gorunur */}
+            <div className="md:col-span-2">
+              <label className={labelClass}>Dekont / Odeme Belgesi Yukle</label>
+              <div className="flex items-center gap-3">
+                <label className="flex items-center gap-2 px-4 py-2.5 border border-dashed border-slate-300 rounded-lg text-sm text-slate-500 hover:border-blue-400 hover:text-blue-600 cursor-pointer transition-colors">
+                  <Upload size={16} />
+                  {dekontFile ? dekontFile.name : "Dekont dosyasi sec (PDF/Gorsel)"}
+                  <input
+                    type="file"
+                    accept=".pdf,.jpg,.jpeg,.png,.webp"
+                    className="hidden"
+                    onChange={(e) => setDekontFile(e.target.files?.[0] || null)}
+                  />
+                </label>
+                {dekontFile && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-slate-400">
+                      {(dekontFile.size / 1024).toFixed(0)} KB
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setDekontFile(null)}
+                      className="text-slate-400 hover:text-red-500"
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+            {/* Yuklu belgeler listesi */}
+            {belgeler.length > 0 && (
+              <div className="md:col-span-2">
+                <label className={labelClass}>Yuklu Belgeler</label>
+                <div className="space-y-2">
+                  {belgeler.map((b) => (
+                    <div key={b.id} className="flex items-center justify-between bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <FileText size={16} className="text-slate-400 shrink-0" />
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium text-slate-700 truncate">{b.aciklama || b.dosyaAdi}</p>
+                          <p className="text-xs text-slate-400">{b.dosyaAdi} - {(b.dosyaBoyut / 1024).toFixed(0)} KB - {new Date(b.createdAt).toLocaleDateString("tr-TR")}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <a
+                          href={`/api/belgeler/${b.id}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                          className="p-1.5 text-blue-500 hover:text-blue-700 hover:bg-blue-50 rounded transition-colors"
+                          title="Indir"
+                        >
+                          <Download size={14} />
+                        </a>
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            if (!confirm("Bu belgeyi silmek istediginize emin misiniz?")) return;
+                            const res = await fetch(`/api/belgeler/${b.id}`, { method: "DELETE" });
+                            if (res.ok) setBelgeler((prev) => prev.filter((d) => d.id !== b.id));
+                          }}
+                          className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors"
+                          title="Sil"
+                        >
+                          <X size={14} />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
             {/* Odeme ozeti */}
