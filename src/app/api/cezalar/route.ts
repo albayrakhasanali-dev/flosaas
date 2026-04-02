@@ -111,24 +111,34 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Check vehicle exists
-    const arac = await prisma.t_Arac_Master.findUnique({
-      where: { id: parseInt(body.aracId) },
+    // RBAC: Check vehicle exists and user has access
+    const parsedAracId = parseInt(body.aracId);
+    if (isNaN(parsedAracId)) return NextResponse.json({ error: "Gecersiz aracId" }, { status: 400 });
+
+    const rbacWhere = buildWhereClause(user);
+    const arac = await prisma.t_Arac_Master.findFirst({
+      where: { id: parsedAracId, ...rbacWhere },
     });
     if (!arac) {
       return NextResponse.json({ error: "Arac bulunamadi" }, { status: 404 });
     }
 
+    // Validate numeric fields
+    const cezaTutari = parseFloat(body.cezaTutari);
+    if (isNaN(cezaTutari) || cezaTutari < 0) {
+      return NextResponse.json({ error: "Gecersiz ceza tutari" }, { status: 400 });
+    }
+
     const ceza = await prisma.t_Ceza.create({
       data: {
-        aracId: parseInt(body.aracId),
+        aracId: parsedAracId,
         tutanakNo: body.tutanakNo || null,
         cezaTarihi: new Date(body.cezaTarihi),
         tebligTarihi: body.tebligTarihi ? new Date(body.tebligTarihi) : null,
         sonOdemeTarihi: body.sonOdemeTarihi ? new Date(body.sonOdemeTarihi) : null,
         cezaTuru: body.cezaTuru,
         aciklama: body.aciklama || null,
-        cezaTutari: parseFloat(body.cezaTutari),
+        cezaTutari,
         indirimlitutar: body.indirimlitutar ? parseFloat(body.indirimlitutar) : null,
         odemeDurumu: body.odemeDurumu || "odenmedi",
         odemeTarihi: body.odemeTarihi ? new Date(body.odemeTarihi) : null,

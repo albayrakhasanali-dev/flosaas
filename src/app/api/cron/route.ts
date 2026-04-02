@@ -4,15 +4,15 @@ import { computeMuayeneKalanGun, computeSigortaKalanGun } from "@/lib/utils";
 import { sendExpiredVehicleAlert, sendWeeklyTrackingReport, sendYapilacakTrackingReport } from "@/lib/email";
 import type { WeeklyReportData, YapilacakReportData } from "@/lib/email";
 
-// Cron secret for security
-const CRON_SECRET = process.env.CRON_SECRET || "flosaas-cron-secret";
+// Cron secret for security — must be set in environment
+const CRON_SECRET = process.env.CRON_SECRET;
 
 // Vercel cron uses GET requests
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const secret = searchParams.get("secret") || req.headers.get("authorization")?.replace("Bearer ", "");
 
-  if (secret !== CRON_SECRET) {
+  if (!CRON_SECRET || secret !== CRON_SECRET) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

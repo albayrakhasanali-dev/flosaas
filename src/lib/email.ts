@@ -1,6 +1,14 @@
 import nodemailer from "nodemailer";
 import type SMTPTransport from "nodemailer/lib/smtp-transport";
 
+// HTML escape to prevent XSS in email templates
+function esc(s: string | number | null | undefined): string {
+  if (s === null || s === undefined) return "";
+  return String(s).replace(/[&<>"']/g, (c) =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c] || c)
+  );
+}
+
 // Gmail SMTP IPs (used when all DNS methods fail on Vercel)
 const GMAIL_SMTP_IPS = [
   "142.251.163.108", "142.251.163.109", "142.250.115.108", "142.250.115.109",
@@ -142,8 +150,8 @@ export async function sendExpiredVehicleAlert(
     .map(
       (a) =>
         `<tr>
-          <td style="border:1px solid #ddd;padding:8px;font-weight:bold">${a.plaka}</td>
-          <td style="border:1px solid #ddd;padding:8px">${a.lokasyon}</td>
+          <td style="border:1px solid #ddd;padding:8px;font-weight:bold">${esc(a.plaka)}</td>
+          <td style="border:1px solid #ddd;padding:8px">${esc(a.lokasyon)}</td>
           <td style="border:1px solid #ddd;padding:8px;color:${(a.muayeneKalanGun ?? 999) < 0 ? "red" : "inherit"}">${a.muayeneKalanGun ?? "N/A"} gun</td>
           <td style="border:1px solid #ddd;padding:8px;color:${(a.sigortaKalanGun ?? 999) < 0 ? "red" : "inherit"}">${a.sigortaKalanGun ?? "N/A"} gun</td>
         </tr>`
@@ -207,9 +215,9 @@ function buildMuayeneTable(items: MuayeneAlarm[], title: string, color: string):
     .map(
       (m) =>
         `<tr>
-          <td style="border:1px solid #e2e8f0;padding:8px 12px;font-weight:600">${m.plaka}</td>
-          <td style="border:1px solid #e2e8f0;padding:8px 12px">${m.sirket}</td>
-          <td style="border:1px solid #e2e8f0;padding:8px 12px">${m.lokasyon}</td>
+          <td style="border:1px solid #e2e8f0;padding:8px 12px;font-weight:600">${esc(m.plaka)}</td>
+          <td style="border:1px solid #e2e8f0;padding:8px 12px">${esc(m.sirket)}</td>
+          <td style="border:1px solid #e2e8f0;padding:8px 12px">${esc(m.lokasyon)}</td>
           <td style="border:1px solid #e2e8f0;padding:8px 12px">${formatDate(m.bitisTarihi)}</td>
           <td style="border:1px solid #e2e8f0;padding:8px 12px;font-weight:700;color:${m.kalanGun < 0 ? "#dc2626" : "#d97706"}">${m.kalanGun < 0 ? `${Math.abs(m.kalanGun)} gun gecmis` : `${m.kalanGun} gun`}</td>
         </tr>`
@@ -239,10 +247,10 @@ function buildSigortaTable(items: SigortaAlarm[], title: string, color: string):
     .map(
       (s) =>
         `<tr>
-          <td style="border:1px solid #e2e8f0;padding:8px 12px;font-weight:600">${s.plaka}</td>
-          <td style="border:1px solid #e2e8f0;padding:8px 12px">${sigortaTuruLabels[s.sigortaTuru] || s.sigortaTuru}</td>
-          <td style="border:1px solid #e2e8f0;padding:8px 12px">${s.sirket}</td>
-          <td style="border:1px solid #e2e8f0;padding:8px 12px">${s.lokasyon}</td>
+          <td style="border:1px solid #e2e8f0;padding:8px 12px;font-weight:600">${esc(s.plaka)}</td>
+          <td style="border:1px solid #e2e8f0;padding:8px 12px">${esc(sigortaTuruLabels[s.sigortaTuru] || s.sigortaTuru)}</td>
+          <td style="border:1px solid #e2e8f0;padding:8px 12px">${esc(s.sirket)}</td>
+          <td style="border:1px solid #e2e8f0;padding:8px 12px">${esc(s.lokasyon)}</td>
           <td style="border:1px solid #e2e8f0;padding:8px 12px">${formatDate(s.bitisTarihi)}</td>
           <td style="border:1px solid #e2e8f0;padding:8px 12px;font-weight:700;color:${s.kalanGun < 0 ? "#dc2626" : "#d97706"}">${s.kalanGun < 0 ? `${Math.abs(s.kalanGun)} gun gecmis` : `${s.kalanGun} gun`}</td>
         </tr>`
@@ -371,11 +379,11 @@ function buildYapilacakTable(items: YapilacakAlarm[], title: string, color: stri
     .map(
       (g) =>
         `<tr>
-          <td style="border:1px solid #e2e8f0;padding:8px 12px;font-weight:600">${g.baslik}</td>
-          <td style="border:1px solid #e2e8f0;padding:8px 12px">${g.plaka || "-"}</td>
-          <td style="border:1px solid #e2e8f0;padding:8px 12px">${kategoriLabels[g.kategori] || g.kategori || "-"}</td>
-          <td style="border:1px solid #e2e8f0;padding:8px 12px;color:${oncelikColor(g.oncelik)};font-weight:600">${oncelikLabels[g.oncelik] || g.oncelik}</td>
-          <td style="border:1px solid #e2e8f0;padding:8px 12px">${g.atanan || "-"}</td>
+          <td style="border:1px solid #e2e8f0;padding:8px 12px;font-weight:600">${esc(g.baslik)}</td>
+          <td style="border:1px solid #e2e8f0;padding:8px 12px">${esc(g.plaka) || "-"}</td>
+          <td style="border:1px solid #e2e8f0;padding:8px 12px">${esc(kategoriLabels[g.kategori] || g.kategori || "-")}</td>
+          <td style="border:1px solid #e2e8f0;padding:8px 12px;color:${oncelikColor(g.oncelik)};font-weight:600">${esc(oncelikLabels[g.oncelik] || g.oncelik)}</td>
+          <td style="border:1px solid #e2e8f0;padding:8px 12px">${esc(g.atanan) || "-"}</td>
           <td style="border:1px solid #e2e8f0;padding:8px 12px">${g.sonTarih ? formatDate(g.sonTarih) : "-"}</td>
           <td style="border:1px solid #e2e8f0;padding:8px 12px;font-weight:700;color:${g.kalanGun < 0 ? "#dc2626" : "#d97706"}">${g.kalanGun < 0 ? `${Math.abs(g.kalanGun)} gun gecmis` : `${g.kalanGun} gun`}</td>
         </tr>`

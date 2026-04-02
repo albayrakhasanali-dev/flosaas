@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { getCurrentUser } from "@/lib/rbac";
+import { getCurrentUser, buildWhereClause } from "@/lib/rbac";
 
 // POST - Upload a document for a vehicle
 export async function POST(request: NextRequest) {
@@ -49,20 +49,21 @@ export async function POST(request: NextRequest) {
     const validTypes = ["ruhsat", "sigorta", "kasko", "muayene", "diger"];
     if (!validTypes.includes(belgeTipi)) {
       return NextResponse.json(
-        { error: "Geçersiz belge tipi" },
+        { error: "Gecersiz belge tipi" },
         { status: 400 }
       );
     }
 
-    // Check vehicle exists
-    const arac = await prisma.t_Arac_Master.findUnique({
-      where: { id: parseInt(aracId) },
+    // RBAC: Check vehicle exists and user has access
+    const parsedAracId = parseInt(aracId);
+    if (isNaN(parsedAracId)) return NextResponse.json({ error: "Gecersiz aracId" }, { status: 400 });
+
+    const rbacWhere = buildWhereClause(user);
+    const arac = await prisma.t_Arac_Master.findFirst({
+      where: { id: parsedAracId, ...rbacWhere },
     });
     if (!arac) {
-      return NextResponse.json(
-        { error: "Araç bulunamadı" },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "Arac bulunamadi" }, { status: 404 });
     }
 
     // Read file content
@@ -71,7 +72,7 @@ export async function POST(request: NextRequest) {
 
     const belge = await prisma.t_Belge.create({
       data: {
-        aracId: parseInt(aracId),
+        aracId: parsedAracId,
         belgeTipi,
         dosyaAdi: file.name,
         dosyaBoyut: file.size,
@@ -94,7 +95,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error("Upload error:", error);
     return NextResponse.json(
-      { error: "Dosya yüklenirken hata oluştu" },
+      { error: "Dosya yuklenirken hata olustu" },
       { status: 500 }
     );
   }
@@ -117,8 +118,20 @@ export async function GET(request: NextRequest) {
     );
   }
 
+  const parsedAracId = parseInt(aracId);
+  if (isNaN(parsedAracId)) return NextResponse.json({ error: "Gecersiz aracId" }, { status: 400 });
+
+  // RBAC: Check user has access to the vehicle
+  const rbacWhere = buildWhereClause(user);
+  const arac = await prisma.t_Arac_Master.findFirst({
+    where: { id: parsedAracId, ...rbacWhere },
+  });
+  if (!arac) {
+    return NextResponse.json({ error: "Arac bulunamadi" }, { status: 404 });
+  }
+
   const belgeler = await prisma.t_Belge.findMany({
-    where: { aracId: parseInt(aracId) },
+    where: { aracId: parsedAracId },
     select: {
       id: true,
       belgeTipi: true,
