@@ -3,7 +3,8 @@
 import { useEffect, useState, useCallback } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { Search, Plus, ChevronLeft, ChevronRight, Eye, Filter, X, DollarSign, Undo2 } from "lucide-react";
+import { Search, Plus, ChevronLeft, ChevronRight, Eye, Filter, X, DollarSign, Undo2, FileDown } from "lucide-react";
+import { exportToExcel } from "@/lib/excel-export";
 
 interface Arac {
   id: number;
@@ -165,6 +166,60 @@ export default function FiloClient() {
     setFUtts("");
   };
 
+  const [exporting, setExporting] = useState(false);
+
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      const params = new URLSearchParams();
+      if (filter !== "all") params.set("filter", filter);
+      if (search) params.set("search", search);
+      params.set("limit", "5000");
+      if (fLokasyon) params.set("lokasyonId", fLokasyon);
+      if (fSirket) params.set("sirketId", fSirket);
+      if (fDurum) params.set("durumId", fDurum);
+      if (fKullanim) params.set("kullanimSekli", fKullanim);
+      if (fMulkiyet) params.set("mulkiyetTipi", fMulkiyet);
+      if (fUtts) params.set("uttsDurum", fUtts);
+
+      const res = await fetch(`/api/araclar?${params}`);
+      const json = await res.json();
+
+      const rows = (json.data || []).map((a: Arac) => ({
+        plaka: a.plaka,
+        durum: a.durum?.durumAdi || "",
+        sirket: a.sirket?.sirketAdi || "",
+        lokasyon: a.lokasyon?.lokasyonAdi || "",
+        mulkiyetTipi: a.mulkiyetTipi || "",
+        markaModel: a.markaModelTicariAdi || "",
+        kullanimSekli: a.kullanimSekli || "",
+        uttsDurum: a.uttsDurum || "",
+        muayene: a.muayeneKalanGun !== null
+          ? (a.muayeneKalanGun < 0 ? `${Math.abs(a.muayeneKalanGun)} gun gecmis` : `${a.muayeneKalanGun} gun`)
+          : "-",
+        sigorta: a.sigortaKalanGun !== null
+          ? (a.sigortaKalanGun < 0 ? `${Math.abs(a.sigortaKalanGun)} gun gecmis` : `${a.sigortaKalanGun} gun`)
+          : "-",
+      }));
+
+      exportToExcel(rows, [
+        { header: "Plaka", key: "plaka", width: 14 },
+        { header: "Durum", key: "durum", width: 16 },
+        { header: "Sirket", key: "sirket", width: 25 },
+        { header: "Lokasyon", key: "lokasyon", width: 25 },
+        { header: "Mulkiyet", key: "mulkiyetTipi", width: 12 },
+        { header: "Marka/Model", key: "markaModel", width: 25 },
+        { header: "Kullanim Sekli", key: "kullanimSekli", width: 16 },
+        { header: "UTTS Durum", key: "uttsDurum", width: 12 },
+        { header: "Muayene", key: "muayene", width: 18 },
+        { header: "Sigorta", key: "sigorta", width: 18 },
+      ], `Filo_${filterLabels[filter]?.replace(/[^a-zA-Z0-9]/g, "_") || "Tum"}_${new Date().toISOString().split("T")[0]}`);
+    } catch {
+      alert("Excel export sirasinda hata olustu");
+    }
+    setExporting(false);
+  };
+
   return (
     <div className="space-y-4">
       {/* Header */}
@@ -177,13 +232,23 @@ export default function FiloClient() {
             {data ? `${data.pagination.total} arac listeleniyor` : "Yukleniyor..."}
           </p>
         </div>
-        <button
-          onClick={() => router.push("/arac/new")}
-          className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-lg text-sm font-medium transition-colors"
-        >
-          <Plus size={16} />
-          Yeni Arac
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleExport}
+            disabled={exporting || !data?.data.length}
+            className="flex items-center gap-2 px-4 py-2.5 border border-slate-300 text-slate-600 hover:bg-slate-50 rounded-lg text-sm font-medium transition-colors disabled:opacity-40"
+          >
+            <FileDown size={16} />
+            {exporting ? "Hazirlaniyor..." : "Excel Indir"}
+          </button>
+          <button
+            onClick={() => router.push("/arac/new")}
+            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-lg text-sm font-medium transition-colors"
+          >
+            <Plus size={16} />
+            Yeni Arac
+          </button>
+        </div>
       </div>
 
       {/* Search + Filter Toggle */}
