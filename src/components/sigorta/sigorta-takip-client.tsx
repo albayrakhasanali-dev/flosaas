@@ -214,7 +214,12 @@ export default function SigortaTakipClient() {
       {/* KPI Cards */}
       {data?.summary && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-          <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
+          <div
+            className={`bg-white rounded-xl border p-4 shadow-sm cursor-pointer transition-colors ${
+              !fDurum && !fSigortaTuru && !fOdemeDurumu ? "border-blue-400 bg-blue-50" : "border-slate-200 hover:border-slate-300"
+            }`}
+            onClick={() => { setFDurum(""); setFSigortaTuru(""); setFOdemeDurumu(""); }}
+          >
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-xs text-slate-500">Toplam Police</p>
@@ -225,7 +230,12 @@ export default function SigortaTakipClient() {
               </div>
             </div>
           </div>
-          <div className="bg-white rounded-xl border border-red-200 p-4 shadow-sm">
+          <div
+            className={`bg-white rounded-xl border p-4 shadow-sm cursor-pointer transition-colors ${
+              fDurum === "suresi_gecmis" ? "border-red-400 bg-red-50" : "border-red-200 hover:border-red-300"
+            }`}
+            onClick={() => setFDurum(fDurum === "suresi_gecmis" ? "" : "suresi_gecmis")}
+          >
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-xs text-red-500">Suresi Gecmis</p>
@@ -236,7 +246,12 @@ export default function SigortaTakipClient() {
               </div>
             </div>
           </div>
-          <div className="bg-white rounded-xl border border-amber-200 p-4 shadow-sm">
+          <div
+            className={`bg-white rounded-xl border p-4 shadow-sm cursor-pointer transition-colors ${
+              fDurum === "yaklasiyor" ? "border-amber-400 bg-amber-50" : "border-amber-200 hover:border-amber-300"
+            }`}
+            onClick={() => setFDurum(fDurum === "yaklasiyor" ? "" : "yaklasiyor")}
+          >
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-xs text-amber-500">Yaklasiyor (30 Gun)</p>

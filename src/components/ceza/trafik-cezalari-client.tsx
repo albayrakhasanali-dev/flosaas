@@ -216,7 +216,12 @@ export default function TrafikCezalariClient() {
       {/* KPI Cards */}
       {data?.summary && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
+          <div
+            className={`bg-white rounded-xl border p-4 shadow-sm cursor-pointer transition-colors ${
+              !fOdemeDurumu && !fCezaTuru ? "border-blue-400 bg-blue-50" : "border-slate-200 hover:border-slate-300"
+            }`}
+            onClick={() => { setFOdemeDurumu(""); setFCezaTuru(""); }}
+          >
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-xs text-slate-500">Toplam Ceza</p>
@@ -228,7 +233,12 @@ export default function TrafikCezalariClient() {
               </div>
             </div>
           </div>
-          <div className="bg-white rounded-xl border border-red-200 p-4 shadow-sm">
+          <div
+            className={`bg-white rounded-xl border p-4 shadow-sm cursor-pointer transition-colors ${
+              fOdemeDurumu === "odenmedi" ? "border-red-400 bg-red-50" : "border-red-200 hover:border-red-300"
+            }`}
+            onClick={() => setFOdemeDurumu(fOdemeDurumu === "odenmedi" ? "" : "odenmedi")}
+          >
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-xs text-red-500">Odenmemis</p>
@@ -240,7 +250,12 @@ export default function TrafikCezalariClient() {
               </div>
             </div>
           </div>
-          <div className="bg-white rounded-xl border border-green-200 p-4 shadow-sm">
+          <div
+            className={`bg-white rounded-xl border p-4 shadow-sm cursor-pointer transition-colors ${
+              fOdemeDurumu === "odendi" ? "border-green-400 bg-green-50" : "border-green-200 hover:border-green-300"
+            }`}
+            onClick={() => setFOdemeDurumu(fOdemeDurumu === "odendi" ? "" : "odendi")}
+          >
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-xs text-green-500">Odenmis</p>
@@ -253,7 +268,12 @@ export default function TrafikCezalariClient() {
               </div>
             </div>
           </div>
-          <div className="bg-white rounded-xl border border-amber-200 p-4 shadow-sm">
+          <div
+            className={`bg-white rounded-xl border p-4 shadow-sm cursor-pointer transition-colors ${
+              fOdemeDurumu === "itiraz_edildi" ? "border-amber-400 bg-amber-50" : "border-amber-200 hover:border-amber-300"
+            }`}
+            onClick={() => setFOdemeDurumu(fOdemeDurumu === "itiraz_edildi" ? "" : "itiraz_edildi")}
+          >
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-xs text-amber-500">Itiraz Edilen</p>
