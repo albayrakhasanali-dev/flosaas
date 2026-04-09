@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { getCurrentUser } from "@/lib/rbac";
+import { getCurrentUser, isAdmin } from "@/lib/rbac";
 
 // DELETE - Remove lokasyon
 export async function DELETE(req: NextRequest) {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  if (user.role === "lokasyon_sefi") {
+  if (!isAdmin(user)) {
     return NextResponse.json({ error: "Yetkiniz yok" }, { status: 403 });
   }
 
@@ -63,7 +63,7 @@ export async function POST(req: NextRequest) {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  if (user.role === "lokasyon_sefi") {
+  if (!isAdmin(user)) {
     return NextResponse.json({ error: "Yetkiniz yok" }, { status: 403 });
   }
 

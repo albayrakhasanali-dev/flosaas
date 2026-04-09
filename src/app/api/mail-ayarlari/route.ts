@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { getCurrentUser } from "@/lib/rbac";
+import { getCurrentUser, isAdmin } from "@/lib/rbac";
 
 const DEFAULT_KRITERLER = JSON.stringify(["suresi_gecmis", "yaklasan_30"]);
 const DEFAULT_ESIK = JSON.stringify([30, 15, 7]);
@@ -31,7 +31,7 @@ async function ensureDefaults() {
 export async function GET() {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  if (user.role === "lokasyon_sefi") {
+  if (!isAdmin(user)) {
     return NextResponse.json({ error: "Yetkiniz yok" }, { status: 403 });
   }
 
@@ -54,7 +54,7 @@ export async function GET() {
 export async function PUT(req: NextRequest) {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  if (user.role === "lokasyon_sefi") {
+  if (!isAdmin(user)) {
     return NextResponse.json({ error: "Yetkiniz yok" }, { status: 403 });
   }
 

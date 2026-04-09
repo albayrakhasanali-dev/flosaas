@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { getCurrentUser, buildWhereClause, canDelete, getEditableFields } from "@/lib/rbac";
+import { getCurrentUser, buildWhereClause, isAdmin } from "@/lib/rbac";
 import { enrichAracWithComputed } from "@/lib/utils";
 
 export async function GET(
@@ -37,55 +37,45 @@ export async function PUT(
   });
   if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
+  // Only admin can edit vehicles
+  if (!isAdmin(user)) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
   const body = await req.json();
-  const editableFields = getEditableFields(user);
 
-  let updateData: Record<string, unknown> = {};
-
-  if (editableFields === null) {
-    // Full access
-    updateData = {
-      durumId: body.durumId,
-      sirketId: body.sirketId,
-      lokasyonId: body.lokasyonId,
-      mulkiyetTipi: body.mulkiyetTipi,
-      markaModelTicariAdi: body.markaModelTicariAdi,
-      kullanimSekli: body.kullanimSekli,
-      modelYili: body.modelYili,
-      ruhsatSeriNo: body.ruhsatSeriNo,
-      sasiNo: body.sasiNo,
-      motorNo: body.motorNo,
-      guncelKmSaat: body.guncelKmSaat,
-      zimmetMasrafMerkezi: body.zimmetMasrafMerkezi,
-      uttsDurum: body.uttsDurum,
-      seyirTakipCihazNo: body.seyirTakipCihazNo,
-      hgsEtiketNo: body.hgsEtiketNo,
-      otomatikVar: body.otomatikVar !== undefined ? body.otomatikVar : undefined,
-      otomatikFirma: body.otomatikFirma,
-      otomatikKod: body.otomatikKod,
-      etiketSinifi: body.etiketSinifi !== undefined ? body.etiketSinifi : undefined,
-      hgsKimeAit: body.hgsKimeAit,
-      takograf: body.takograf,
-      taahhutname: body.taahhutname,
-      kabisVar: body.kabisVar !== undefined ? body.kabisVar : undefined,
-      kabisSirket: body.kabisSirket,
-      tescilTarihi: body.tescilTarihi ? new Date(body.tescilTarihi) : undefined,
-      k1YetkiBelgesi: body.k1YetkiBelgesi !== undefined ? body.k1YetkiBelgesi : undefined,
-      muayeneGerekli: body.muayeneGerekli !== undefined ? body.muayeneGerekli : undefined,
-      sigortaGerekli: body.sigortaGerekli !== undefined ? body.sigortaGerekli : undefined,
-      // muayeneBitisTarihi, sigortaBitisTarihi, kaskoBitisTarihi
-      // are managed by Takip Modulleri (Muayene/Sigorta APIs) — not editable here
-    };
-    // Remove undefined values
-    Object.keys(updateData).forEach((k) => updateData[k] === undefined && delete updateData[k]);
-  } else {
-    // Limited access
-    for (const field of editableFields) {
-      if (body[field] !== undefined) {
-        updateData[field] = body[field];
-      }
-    }
-  }
+  const updateData: Record<string, unknown> = {
+    durumId: body.durumId,
+    sirketId: body.sirketId,
+    lokasyonId: body.lokasyonId,
+    mulkiyetTipi: body.mulkiyetTipi,
+    markaModelTicariAdi: body.markaModelTicariAdi,
+    kullanimSekli: body.kullanimSekli,
+    modelYili: body.modelYili,
+    ruhsatSeriNo: body.ruhsatSeriNo,
+    sasiNo: body.sasiNo,
+    motorNo: body.motorNo,
+    guncelKmSaat: body.guncelKmSaat,
+    zimmetMasrafMerkezi: body.zimmetMasrafMerkezi,
+    uttsDurum: body.uttsDurum,
+    seyirTakipCihazNo: body.seyirTakipCihazNo,
+    hgsEtiketNo: body.hgsEtiketNo,
+    otomatikVar: body.otomatikVar !== undefined ? body.otomatikVar : undefined,
+    otomatikFirma: body.otomatikFirma,
+    otomatikKod: body.otomatikKod,
+    etiketSinifi: body.etiketSinifi !== undefined ? body.etiketSinifi : undefined,
+    hgsKimeAit: body.hgsKimeAit,
+    takograf: body.takograf,
+    taahhutname: body.taahhutname,
+    kabisVar: body.kabisVar !== undefined ? body.kabisVar : undefined,
+    kabisSirket: body.kabisSirket,
+    tescilTarihi: body.tescilTarihi ? new Date(body.tescilTarihi) : undefined,
+    k1YetkiBelgesi: body.k1YetkiBelgesi !== undefined ? body.k1YetkiBelgesi : undefined,
+    muayeneGerekli: body.muayeneGerekli !== undefined ? body.muayeneGerekli : undefined,
+    sigortaGerekli: body.sigortaGerekli !== undefined ? body.sigortaGerekli : undefined,
+    // muayeneBitisTarihi, sigortaBitisTarihi, kaskoBitisTarihi
+    // are managed by Takip Modulleri (Muayene/Sigorta APIs) — not editable here
+  };
+  // Remove undefined values
+  Object.keys(updateData).forEach((k) => updateData[k] === undefined && delete updateData[k]);
 
   const updated = await prisma.t_Arac_Master.update({
     where: { id: parseInt(id) },
@@ -104,8 +94,8 @@ export async function PATCH(
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  // Only super_admin and sirket_yoneticisi can sell/unsell vehicles
-  if (!["super_admin", "sirket_yoneticisi"].includes(user.role)) {
+  // Only admin can sell/unsell vehicles
+  if (!isAdmin(user)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
@@ -166,7 +156,7 @@ export async function DELETE(
 ) {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  if (!canDelete(user)) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (!isAdmin(user)) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const { id } = await params;
   await prisma.t_Arac_Master.delete({ where: { id: parseInt(id) } });

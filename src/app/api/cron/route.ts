@@ -162,7 +162,7 @@ async function handleWeeklyReport(force = false) {
       const alicilar: string[] = JSON.parse(ayar.alicilar);
       if (ayar.yoneticilereGonder) {
         const yoneticiler = await prisma.user.findMany({
-          where: { role: { in: ["super_admin", "sirket_yoneticisi"] }, isActive: true },
+          where: { role: "admin", isActive: true },
           select: { email: true },
         });
         for (const y of yoneticiler) {
@@ -389,7 +389,7 @@ async function handleWeeklyReportDefault() {
   };
 
   const yoneticiler = await prisma.user.findMany({
-    where: { role: { in: ["super_admin", "sirket_yoneticisi"] }, isActive: true },
+    where: { role: "admin", isActive: true },
     select: { email: true },
   });
   const emailTargets = yoneticiler.map((u) => u.email);

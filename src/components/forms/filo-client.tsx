@@ -77,7 +77,7 @@ export default function FiloClient() {
   const [undoDialog, setUndoDialog] = useState<{ open: boolean; arac: Arac | null }>({ open: false, arac: null });
   const [undoLoading, setUndoLoading] = useState(false);
 
-  const canSell = userRole === "super_admin" || userRole === "sirket_yoneticisi";
+  const isAdminRole = userRole === "admin";
 
   const handleSell = async () => {
     if (!sellDialog.arac) return;
@@ -233,7 +233,7 @@ export default function FiloClient() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          {canSell && (
+          {isAdminRole && (
             <button
               onClick={handleExport}
               disabled={exporting || !data?.data.length}
@@ -243,13 +243,15 @@ export default function FiloClient() {
               {exporting ? "Hazirlaniyor..." : "Excel Indir"}
             </button>
           )}
-          <button
-            onClick={() => router.push("/arac/new")}
-            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-lg text-sm font-medium transition-colors"
-          >
-            <Plus size={16} />
-            Yeni Arac
-          </button>
+          {isAdminRole && (
+            <button
+              onClick={() => router.push("/arac/new")}
+              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-lg text-sm font-medium transition-colors"
+            >
+              <Plus size={16} />
+              Yeni Arac
+            </button>
+          )}
         </div>
       </div>
 
@@ -510,7 +512,7 @@ export default function FiloClient() {
                           <button className="text-slate-400 hover:text-blue-600" title="Goruntule">
                             <Eye size={16} />
                           </button>
-                          {canSell && a.durum?.durumAdi !== "🟣 SATILDI" && (
+                          {isAdminRole && a.durum?.durumAdi !== "🟣 SATILDI" && (
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
@@ -524,7 +526,7 @@ export default function FiloClient() {
                               <DollarSign size={16} />
                             </button>
                           )}
-                          {canSell && a.durum?.durumAdi === "🟣 SATILDI" && (
+                          {isAdminRole && a.durum?.durumAdi === "🟣 SATILDI" && (
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();

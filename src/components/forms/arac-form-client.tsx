@@ -166,7 +166,7 @@ export default function AracFormClient({ aracId }: { aracId: string }) {
   const { data: session } = useSession();
   const isNew = aracId === "new";
   const userRole = (session?.user as Record<string, unknown>)?.role as string;
-  const isLokasyonSefi = userRole === "lokasyon_sefi";
+  const isPersonel = userRole === "personel";
 
   const [activeTab, setActiveTab] = useState(0);
   const [form, setForm] = useState<FormData>(emptyForm);
@@ -447,8 +447,9 @@ export default function AracFormClient({ aracId }: { aracId: string }) {
   };
 
   const isFieldDisabled = (field: string): boolean => {
+    void field;
     if (isNew) return false;
-    if (isLokasyonSefi && field !== "guncelKmSaat" && field !== "zimmetMasrafMerkezi") return true;
+    if (isPersonel) return true;
     return false;
   };
 
@@ -490,7 +491,7 @@ export default function AracFormClient({ aracId }: { aracId: string }) {
           </div>
         </div>
         <div className="flex gap-2">
-          {!isNew && userRole === "super_admin" && (
+          {!isNew && userRole === "admin" && (
             <button
               onClick={handleDelete}
               className="flex items-center gap-2 px-4 py-2.5 border border-red-300 text-red-600 rounded-lg text-sm hover:bg-red-50"
@@ -499,14 +500,16 @@ export default function AracFormClient({ aracId }: { aracId: string }) {
               Sil
             </button>
           )}
-          <button
-            onClick={handleSave}
-            disabled={saving}
-            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-lg text-sm font-medium disabled:opacity-50"
-          >
-            <Save size={16} />
-            {saving ? "Kaydediliyor..." : "Kaydet"}
-          </button>
+          {!isPersonel && (
+            <button
+              onClick={handleSave}
+              disabled={saving}
+              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-lg text-sm font-medium disabled:opacity-50"
+            >
+              <Save size={16} />
+              {saving ? "Kaydediliyor..." : "Kaydet"}
+            </button>
+          )}
         </div>
       </div>
 
@@ -528,7 +531,7 @@ export default function AracFormClient({ aracId }: { aracId: string }) {
                 )}
               </div>
             </div>
-            {(userRole === "super_admin" || userRole === "sirket_yoneticisi") && (
+            {userRole === "admin" && (
               <button
                 onClick={async () => {
                   if (!confirm("Satisi geri almak istediginize emin misiniz? Arac AKTİF durumuna donecektir.")) return;
@@ -595,7 +598,7 @@ export default function AracFormClient({ aracId }: { aracId: string }) {
                     <option value="">Seciniz</option>
                     {lookups?.sirketler.map((s) => <option key={s.id} value={s.id}>{s.sirketAdi}</option>)}
                   </select>
-                  {!isLokasyonSefi && (
+                  {!isPersonel && (
                     <button
                       type="button"
                       onClick={() => setShowNewSirket(true)}
@@ -696,7 +699,7 @@ export default function AracFormClient({ aracId }: { aracId: string }) {
                     <option value="">Seciniz</option>
                     {lookups?.lokasyonlar.map((l) => <option key={l.id} value={l.id}>{l.lokasyonAdi}</option>)}
                   </select>
-                  {!isLokasyonSefi && (
+                  {!isPersonel && (
                     <>
                       <button
                         type="button"
@@ -896,7 +899,7 @@ export default function AracFormClient({ aracId }: { aracId: string }) {
                 </p>
               </div>
               {/* Takip Gereklilikleri */}
-              {!isNew && !isLokasyonSefi && (
+              {!isNew && !isPersonel && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                   <div className={`flex items-center justify-between p-3 rounded-lg border ${form.muayeneGerekli ? "bg-green-50 border-green-200" : "bg-slate-50 border-slate-200"}`}>
                     <div>
@@ -1053,7 +1056,7 @@ export default function AracFormClient({ aracId }: { aracId: string }) {
                             >
                               <Download size={16} />
                             </a>
-                            {userRole !== "lokasyon_sefi" && (
+                            {!isPersonel && (
                               <button
                                 onClick={() => handleDeleteBelge(belge.id)}
                                 className="p-2 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"

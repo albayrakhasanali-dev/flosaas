@@ -13,7 +13,7 @@ export default async function KullaniciDetayPage({
   if (!session) redirect("/login");
 
   const role = (session.user as Record<string, unknown>)?.role as string;
-  if (role === "lokasyon_sefi") redirect("/");
+  if (role !== "admin") redirect("/");
 
   const { id } = await params;
 

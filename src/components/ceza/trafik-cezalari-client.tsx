@@ -86,7 +86,7 @@ export default function TrafikCezalariClient() {
   const router = useRouter();
   const { data: session } = useSession();
   const userRole = (session?.user as Record<string, unknown>)?.role as string;
-  const isAdmin = userRole === "super_admin" || userRole === "sirket_yoneticisi";
+  const isAdminRole = userRole === "admin";
   const [data, setData] = useState<CezaResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -193,7 +193,7 @@ export default function TrafikCezalariClient() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          {isAdmin && (
+          {isAdminRole && (
             <button
               onClick={handleExport}
               disabled={exporting || !data?.data.length}
@@ -203,13 +203,15 @@ export default function TrafikCezalariClient() {
               {exporting ? "Hazirlaniyor..." : "Excel Indir"}
             </button>
           )}
-          <button
-            onClick={() => router.push("/ceza/new")}
-            className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-4 py-2.5 rounded-lg text-sm font-medium transition-colors"
-          >
-            <Plus size={16} />
-            Yeni Ceza Ekle
-          </button>
+          {isAdminRole && (
+            <button
+              onClick={() => router.push("/ceza/new")}
+              className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-4 py-2.5 rounded-lg text-sm font-medium transition-colors"
+            >
+              <Plus size={16} />
+              Yeni Ceza Ekle
+            </button>
+          )}
         </div>
       </div>
 

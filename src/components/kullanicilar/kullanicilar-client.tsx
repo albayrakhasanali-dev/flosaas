@@ -34,9 +34,8 @@ interface KullaniciResponse {
     toplamKullanici: number;
     aktifKullanici: number;
     pasifKullanici: number;
-    superAdminSayisi: number;
-    yoneticiSayisi: number;
-    sefSayisi: number;
+    adminSayisi: number;
+    personelSayisi: number;
   };
 }
 
@@ -46,9 +45,8 @@ interface Sirket {
 }
 
 const roleLabels: Record<string, string> = {
-  super_admin: "Super Admin",
-  sirket_yoneticisi: "Sirket Yoneticisi",
-  lokasyon_sefi: "Lokasyon Sefi",
+  admin: "Admin",
+  personel: "Personel",
 };
 
 const formatDate = (date: string) =>
@@ -169,11 +167,9 @@ export default function KullanicilarClient() {
               <div>
                 <p className="text-xs text-blue-500">Rol Dagilimi</p>
                 <div className="flex items-center gap-2 mt-1">
-                  <span className="text-xs font-semibold text-purple-600">{data.summary.superAdminSayisi} Admin</span>
+                  <span className="text-xs font-semibold text-purple-600">{data.summary.adminSayisi} Admin</span>
                   <span className="text-slate-300">|</span>
-                  <span className="text-xs font-semibold text-blue-600">{data.summary.yoneticiSayisi} Yonetici</span>
-                  <span className="text-slate-300">|</span>
-                  <span className="text-xs font-semibold text-slate-600">{data.summary.sefSayisi} Sef</span>
+                  <span className="text-xs font-semibold text-blue-600">{data.summary.personelSayisi} Personel</span>
                 </div>
               </div>
               <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
@@ -305,10 +301,8 @@ export default function KullanicilarClient() {
                       <td>
                         <span
                           className={`badge text-xs ${
-                            k.role === "super_admin"
+                            k.role === "admin"
                               ? "badge-purple"
-                              : k.role === "sirket_yoneticisi"
-                              ? "badge-info"
                               : "badge-neutral"
                           }`}
                         >

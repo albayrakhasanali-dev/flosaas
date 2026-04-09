@@ -80,7 +80,7 @@ export default function MuayeneTakipClient() {
   const router = useRouter();
   const { data: session } = useSession();
   const userRole = (session?.user as Record<string, unknown>)?.role as string;
-  const isAdmin = userRole === "super_admin" || userRole === "sirket_yoneticisi";
+  const isAdminRole = userRole === "admin";
   const [data, setData] = useState<MuayeneResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -190,7 +190,7 @@ export default function MuayeneTakipClient() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          {isAdmin && (
+          {isAdminRole && (
             <button
               onClick={handleExport}
               disabled={exporting || !data?.data.length}

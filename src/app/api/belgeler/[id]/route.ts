@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { getCurrentUser, buildWhereClause, type SessionUser } from "@/lib/rbac";
+import { getCurrentUser, buildWhereClause, isAdmin, type SessionUser } from "@/lib/rbac";
 
 // Helper: validate belge belongs to an accessible vehicle
 async function validateBelgeAccess(belgeId: number, user: SessionUser) {
@@ -54,7 +54,7 @@ export async function DELETE(
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  if (!["super_admin", "sirket_yoneticisi"].includes(user.role)) {
+  if (!isAdmin(user)) {
     return NextResponse.json({ error: "Belge silme yetkiniz yok" }, { status: 403 });
   }
 

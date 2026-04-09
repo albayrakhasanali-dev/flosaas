@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { getCurrentUser } from "@/lib/rbac";
+import { getCurrentUser, isAdmin } from "@/lib/rbac";
 import { hashPassword } from "@/lib/password";
 
 // GET - Get single user detail
@@ -11,7 +11,7 @@ export async function GET(
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  if (user.role === "lokasyon_sefi") {
+  if (!isAdmin(user)) {
     return NextResponse.json({ error: "Yetkiniz yok" }, { status: 403 });
   }
 
@@ -25,9 +25,10 @@ export async function GET(
       role: true,
       isActive: true,
       sirketId: true,
-      lokasyonId: true,
       sirket: { select: { sirketAdi: true } },
-      lokasyon: { select: { lokasyonAdi: true } },
+      lokasyonlar: {
+        select: { lokasyon: { select: { id: true, lokasyonAdi: true } } },
+      },
       createdAt: true,
       updatedAt: true,
     },
@@ -35,11 +36,6 @@ export async function GET(
 
   if (!kullanici) {
     return NextResponse.json({ error: "Kullanici bulunamadi" }, { status: 404 });
-  }
-
-  // sirket_yoneticisi can only see users in their company
-  if (user.role === "sirket_yoneticisi" && kullanici.sirketId !== user.sirketId) {
-    return NextResponse.json({ error: "Bu kullaniciyi goruntuleme yetkiniz yok" }, { status: 403 });
   }
 
   return NextResponse.json(kullanici);
@@ -53,7 +49,7 @@ export async function PUT(
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  if (user.role === "lokasyon_sefi") {
+  if (!isAdmin(user)) {
     return NextResponse.json({ error: "Yetkiniz yok" }, { status: 403 });
   }
 
@@ -71,16 +67,6 @@ export async function PUT(
       return NextResponse.json({ error: "Kullanici bulunamadi" }, { status: 404 });
     }
 
-    // sirket_yoneticisi can only edit users in their company
-    if (user.role === "sirket_yoneticisi" && existing.sirketId !== user.sirketId) {
-      return NextResponse.json({ error: "Bu kullaniciyi duzenleme yetkiniz yok" }, { status: 403 });
-    }
-
-    // sirket_yoneticisi cannot promote to super_admin
-    if (user.role === "sirket_yoneticisi" && body.role === "super_admin") {
-      return NextResponse.json({ error: "Super admin rolü atama yetkiniz yok" }, { status: 403 });
-    }
-
     // Check email uniqueness if changed
     if (body.email && body.email !== existing.email) {
       const emailExists = await prisma.user.findUnique({
@@ -91,23 +77,25 @@ export async function PUT(
       }
     }
 
+    // Validate role if provided
+    if (body.role !== undefined) {
+      const validRoles = ["admin", "personel"];
+      if (!validRoles.includes(body.role)) {
+        return NextResponse.json({ error: "Gecersiz rol" }, { status: 400 });
+      }
+    }
+
     // Build update data
     const updateData: Record<string, unknown> = {};
     if (body.email !== undefined) updateData.email = body.email;
     if (body.name !== undefined) updateData.name = body.name || null;
     if (body.role !== undefined) updateData.role = body.role;
     if (body.sirketId !== undefined) updateData.sirketId = body.sirketId ? parseInt(body.sirketId) : null;
-    if (body.lokasyonId !== undefined) updateData.lokasyonId = body.lokasyonId ? parseInt(body.lokasyonId) : null;
     if (body.isActive !== undefined) updateData.isActive = body.isActive;
 
     // Password: only update if provided and non-empty
     if (body.password && body.password.trim() !== "") {
       updateData.password = hashPassword(body.password);
-    }
-
-    // sirket_yoneticisi forces own company
-    if (user.role === "sirket_yoneticisi") {
-      updateData.sirketId = user.sirketId;
     }
 
     const updated = await prisma.user.update({
@@ -120,13 +108,28 @@ export async function PUT(
         role: true,
         isActive: true,
         sirketId: true,
-        lokasyonId: true,
         sirket: { select: { sirketAdi: true } },
-        lokasyon: { select: { lokasyonAdi: true } },
         createdAt: true,
         updatedAt: true,
       },
     });
+
+    // Handle lokasyonIds: sync UserLokasyon join table
+    if (body.lokasyonIds !== undefined && Array.isArray(body.lokasyonIds)) {
+      // Delete all existing UserLokasyon for this user
+      await prisma.userLokasyon.deleteMany({
+        where: { userId: targetId },
+      });
+      // Create new ones
+      if (body.lokasyonIds.length > 0) {
+        await prisma.userLokasyon.createMany({
+          data: body.lokasyonIds.map((lokId: number) => ({
+            userId: targetId,
+            lokasyonId: typeof lokId === "string" ? parseInt(lokId) : lokId,
+          })),
+        });
+      }
+    }
 
     return NextResponse.json(updated);
   } catch (error) {
@@ -135,7 +138,7 @@ export async function PUT(
   }
 }
 
-// DELETE - Delete user (super_admin only)
+// DELETE - Delete user (admin only)
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -143,7 +146,7 @@ export async function DELETE(
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  if (user.role !== "super_admin") {
+  if (!isAdmin(user)) {
     return NextResponse.json({ error: "Kullanici silme yetkiniz yok" }, { status: 403 });
   }
 

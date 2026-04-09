@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { getCurrentUser, buildWhereClause, type SessionUser } from "@/lib/rbac";
+import { getCurrentUser, buildWhereClause, isAdmin, type SessionUser } from "@/lib/rbac";
 
 // Helper: validate ceza belongs to a vehicle accessible by user
 async function validateCezaAccess(cezaId: number, user: SessionUser) {
@@ -54,6 +54,9 @@ export async function PUT(
   const { id } = await params;
   const parsedId = parseInt(id);
   if (isNaN(parsedId)) return NextResponse.json({ error: "Gecersiz ID" }, { status: 400 });
+
+  // Only admin can update cezalar
+  if (!isAdmin(user)) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   // RBAC: check user can access the ceza's vehicle
   const existing = await validateCezaAccess(parsedId, user);
@@ -115,7 +118,7 @@ export async function DELETE(
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  if (!["super_admin", "sirket_yoneticisi"].includes(user.role)) {
+  if (!isAdmin(user)) {
     return NextResponse.json({ error: "Ceza silme yetkiniz yok" }, { status: 403 });
   }
 

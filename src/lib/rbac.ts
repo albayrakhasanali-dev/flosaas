@@ -1,15 +1,15 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "./auth-options";
 
-export type UserRole = "super_admin" | "sirket_yoneticisi" | "lokasyon_sefi";
+export type UserRole = "admin" | "personel";
 
 export interface SessionUser {
   id: string;
   email: string;
   name: string;
   role: UserRole;
+  lokasyonIds: number[];
   sirketId: number | null;
-  lokasyonId: number | null;
 }
 
 export async function getCurrentUser(): Promise<SessionUser | null> {
@@ -19,35 +19,18 @@ export async function getCurrentUser(): Promise<SessionUser | null> {
 }
 
 export function buildWhereClause(user: SessionUser): Record<string, unknown> {
-  switch (user.role) {
-    case "super_admin":
-      return {};
-    case "sirket_yoneticisi":
-      return { sirketId: user.sirketId };
-    case "lokasyon_sefi":
-      return { lokasyonId: user.lokasyonId };
-    default:
-      return { id: -1 }; // no access
-  }
+  if (user.role === "admin") return {};
+  // Personel: filter by assigned locations
+  if (user.lokasyonIds.length === 0) return { id: -1 }; // no locations = no access
+  return { lokasyonId: { in: user.lokasyonIds } };
 }
 
-export function canDelete(user: SessionUser): boolean {
-  return user.role === "super_admin";
+export function isAdmin(user: SessionUser): boolean {
+  return user.role === "admin";
 }
 
-export function canCreate(user: SessionUser): boolean {
-  return user.role === "super_admin" || user.role === "sirket_yoneticisi";
-}
-
-export function getEditableFields(user: SessionUser): string[] | null {
-  switch (user.role) {
-    case "super_admin":
-      return null; // all fields
-    case "sirket_yoneticisi":
-      return null; // all fields within their company
-    case "lokasyon_sefi":
-      return ["guncelKmSaat", "zimmetMasrafMerkezi"];
-    default:
-      return [];
-  }
+// Personel can only edit muayene and sigorta modules
+export function canEditModule(user: SessionUser, module: "muayene" | "sigorta" | "other"): boolean {
+  if (user.role === "admin") return true;
+  return module === "muayene" || module === "sigorta";
 }

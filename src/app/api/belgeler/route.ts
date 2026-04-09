@@ -1,12 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { getCurrentUser, buildWhereClause } from "@/lib/rbac";
+import { getCurrentUser, buildWhereClause, isAdmin } from "@/lib/rbac";
 
 // POST - Upload a document for a vehicle
 export async function POST(request: NextRequest) {
   const user = await getCurrentUser();
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  if (!isAdmin(user)) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
   try {

@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getCurrentUser } from "@/lib/rbac";
+import { getCurrentUser, isAdmin } from "@/lib/rbac";
 import { sendWeeklyTrackingReport, sendYapilacakTrackingReport } from "@/lib/email";
 import type { WeeklyReportData, YapilacakReportData } from "@/lib/email";
 
 export async function POST(req: NextRequest) {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  if (user.role === "lokasyon_sefi") {
+  if (!isAdmin(user)) {
     return NextResponse.json({ error: "Yetkiniz yok" }, { status: 403 });
   }
 

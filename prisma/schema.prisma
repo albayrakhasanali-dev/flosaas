@@ -29,6 +29,7 @@ model T_Lokasyon {
   createdAt     DateTime       @default(now()) @map("created_at")
   araclar       T_Arac_Master[]
   kullanicilar  User[]
+  kullanicilarJoin UserLokasyon[]
 
   @@map("t_lokasyon")
 }
@@ -231,11 +232,12 @@ model User {
   email         String    @unique
   password      String
   name          String?
-  role          String    @default("lokasyon_sefi") // super_admin, sirket_yoneticisi, lokasyon_sefi
+  role          String    @default("personel") // admin, personel
   sirketId      Int?      @map("sirket_id")
   sirket        T_Sirket? @relation(fields: [sirketId], references: [id])
-  lokasyonId    Int?      @map("lokasyon_id")
+  lokasyonId    Int?      @map("lokasyon_id")       // DEPRECATED: use lokasyonlar relation
   lokasyon      T_Lokasyon? @relation(fields: [lokasyonId], references: [id])
+  lokasyonlar   UserLokasyon[]
   isActive      Boolean   @default(true) @map("is_active")
   createdAt     DateTime  @default(now()) @map("created_at")
   updatedAt     DateTime  @updatedAt @map("updated_at")
@@ -243,6 +245,16 @@ model User {
   eklenenGorevler   T_Yapilacak[] @relation("eklenenGorevler")
 
   @@map("users")
+}
+
+model UserLokasyon {
+  userId     Int        @map("user_id")
+  lokasyonId Int        @map("lokasyon_id")
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lokasyon   T_Lokasyon @relation(fields: [lokasyonId], references: [id], onDelete: Cascade)
+
+  @@id([userId, lokasyonId])
+  @@map("user_lokasyon")
 }
 
 // ==========================================

@@ -24,7 +24,6 @@ interface FormData {
   password: string;
   role: string;
   sirketId: string;
-  lokasyonId: string;
   isActive: boolean;
 }
 
@@ -32,16 +31,14 @@ const emptyForm: FormData = {
   name: "",
   email: "",
   password: "",
-  role: "lokasyon_sefi",
+  role: "personel",
   sirketId: "",
-  lokasyonId: "",
   isActive: true,
 };
 
 const roleLabels: Record<string, string> = {
-  super_admin: "Super Admin",
-  sirket_yoneticisi: "Sirket Yoneticisi",
-  lokasyon_sefi: "Lokasyon Sefi",
+  admin: "Admin",
+  personel: "Personel",
 };
 
 export default function KullaniciFormClient({ kullaniciId }: { kullaniciId?: string }) {
@@ -57,6 +54,7 @@ export default function KullaniciFormClient({ kullaniciId }: { kullaniciId?: str
   const [message, setMessage] = useState<{ type: string; text: string } | null>(null);
   const [activeTab, setActiveTab] = useState(0);
   const [showPassword, setShowPassword] = useState(false);
+  const [selectedLokasyonIds, setSelectedLokasyonIds] = useState<number[]>([]);
 
   // Extra info for edit mode
   const [createdAt, setCreatedAt] = useState<string | null>(null);
@@ -80,11 +78,17 @@ export default function KullaniciFormClient({ kullaniciId }: { kullaniciId?: str
               name: data.name || "",
               email: data.email || "",
               password: "", // Never show existing password
-              role: data.role || "lokasyon_sefi",
+              role: data.role || "personel",
               sirketId: data.sirketId ? String(data.sirketId) : "",
-              lokasyonId: data.lokasyonId ? String(data.lokasyonId) : "",
               isActive: data.isActive !== false,
             });
+            // Load lokasyonIds from user data
+            if (Array.isArray(data.lokasyonIds)) {
+              setSelectedLokasyonIds(data.lokasyonIds);
+            } else if (data.lokasyonId) {
+              // Backward compat: single lokasyonId -> array
+              setSelectedLokasyonIds([data.lokasyonId]);
+            }
             setCreatedAt(data.createdAt);
             setUpdatedAt(data.updatedAt);
           }
@@ -122,8 +126,8 @@ export default function KullaniciFormClient({ kullaniciId }: { kullaniciId?: str
         name: form.name || null,
         email: form.email,
         role: form.role,
-        sirketId: form.sirketId || null,
-        lokasyonId: form.lokasyonId || null,
+        sirketId: form.role === "admin" ? (form.sirketId || null) : null,
+        lokasyonIds: form.role === "personel" ? selectedLokasyonIds : [],
         isActive: form.isActive,
       };
 
@@ -184,10 +188,8 @@ export default function KullaniciFormClient({ kullaniciId }: { kullaniciId?: str
   const inputClass = "w-full px-3 py-2.5 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-violet-500 focus:border-transparent outline-none";
   const labelClass = "block text-xs font-medium text-slate-500 mb-1";
 
-  // Available roles based on current user's role
-  const availableRoles = userRole === "super_admin"
-    ? Object.entries(roleLabels)
-    : Object.entries(roleLabels).filter(([key]) => key !== "super_admin");
+  // Available roles: admin and personel
+  const availableRoles = Object.entries(roleLabels);
 
   return (
     <div className="space-y-4 max-w-4xl">
@@ -210,7 +212,7 @@ export default function KullaniciFormClient({ kullaniciId }: { kullaniciId?: str
           </div>
         </div>
         <div className="flex items-center gap-2">
-          {!isNew && userRole === "super_admin" && (
+          {!isNew && userRole === "admin" && (
             <button
               onClick={handleDelete}
               className="flex items-center gap-2 px-4 py-2.5 border border-red-200 text-red-600 hover:bg-red-50 rounded-lg text-sm transition-colors"
@@ -331,39 +333,61 @@ export default function KullaniciFormClient({ kullaniciId }: { kullaniciId?: str
               </select>
             </div>
 
-            {/* Sirket */}
-            <div>
-              <label className={labelClass}>Sirket</label>
-              <select
-                value={form.sirketId}
-                onChange={(e) => handleChange("sirketId", e.target.value)}
-                disabled={userRole === "sirket_yoneticisi"}
-                className={`${inputClass} ${userRole === "sirket_yoneticisi" ? "bg-slate-50 cursor-not-allowed" : ""}`}
-              >
-                <option value="">Seciniz</option>
-                {lookups?.sirketler.map((s) => (
-                  <option key={s.id} value={s.id}>{s.sirketAdi}</option>
-                ))}
-              </select>
-              {userRole === "sirket_yoneticisi" && (
-                <p className="text-xs text-slate-400 mt-1">Sirket otomatik atanir</p>
-              )}
-            </div>
+            {/* Sirket - only show for admin role */}
+            {form.role === "admin" && (
+              <div>
+                <label className={labelClass}>Sirket (opsiyonel)</label>
+                <select
+                  value={form.sirketId}
+                  onChange={(e) => handleChange("sirketId", e.target.value)}
+                  className={inputClass}
+                >
+                  <option value="">Seciniz</option>
+                  {lookups?.sirketler.map((s) => (
+                    <option key={s.id} value={s.id}>{s.sirketAdi}</option>
+                  ))}
+                </select>
+                <p className="text-xs text-slate-400 mt-1">Admin tum lokasyonlari gorur</p>
+              </div>
+            )}
 
-            {/* Lokasyon */}
-            <div>
-              <label className={labelClass}>Lokasyon</label>
-              <select
-                value={form.lokasyonId}
-                onChange={(e) => handleChange("lokasyonId", e.target.value)}
-                className={inputClass}
-              >
-                <option value="">Seciniz</option>
-                {lookups?.lokasyonlar.map((l) => (
-                  <option key={l.id} value={l.id}>{l.lokasyonAdi}</option>
-                ))}
-              </select>
-            </div>
+            {/* Lokasyon multi-select - only show for personel role */}
+            {form.role === "personel" && (
+              <div className="md:col-span-2">
+                <label className={labelClass}>Lokasyonlar *</label>
+                <p className="text-xs text-slate-400 mb-2">Personelin erisebilecegi lokasyonlari secin</p>
+                <div className="border border-slate-300 rounded-lg max-h-48 overflow-y-auto p-2 space-y-1">
+                  {lookups?.lokasyonlar.map((l) => (
+                    <label
+                      key={l.id}
+                      className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-slate-50 cursor-pointer"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selectedLokasyonIds.includes(l.id)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSelectedLokasyonIds((prev) => [...prev, l.id]);
+                          } else {
+                            setSelectedLokasyonIds((prev) => prev.filter((id) => id !== l.id));
+                          }
+                        }}
+                        className="rounded border-slate-300 text-violet-600 focus:ring-violet-500"
+                      />
+                      <span className="text-sm text-slate-700">{l.lokasyonAdi}</span>
+                    </label>
+                  ))}
+                  {(!lookups?.lokasyonlar || lookups.lokasyonlar.length === 0) && (
+                    <p className="text-xs text-slate-400 py-2 text-center">Lokasyon bulunamadi</p>
+                  )}
+                </div>
+                {selectedLokasyonIds.length > 0 && (
+                  <p className="text-xs text-violet-600 mt-1">
+                    {selectedLokasyonIds.length} lokasyon secili
+                  </p>
+                )}
+              </div>
+            )}
           </div>
         )}
 

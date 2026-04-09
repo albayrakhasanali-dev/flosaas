@@ -3,6 +3,13 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import prisma from "./prisma";
 import { verifyPassword } from "./password";
 
+// Map legacy role names to new ones
+function mapRole(role: string): string {
+  if (role === "super_admin" || role === "sirket_yoneticisi") return "admin";
+  if (role === "lokasyon_sefi") return "personel";
+  return role; // already "admin" or "personel"
+}
+
 export const authOptions: NextAuthOptions = {
   providers: [
     CredentialsProvider({
@@ -16,18 +23,27 @@ export const authOptions: NextAuthOptions = {
 
         const user = await prisma.user.findUnique({
           where: { email: credentials.email },
+          include: {
+            lokasyonlar: { select: { lokasyonId: true } },
+          },
         });
 
         if (!user || !user.isActive) return null;
         if (!verifyPassword(credentials.password, user.password)) return null;
 
+        // Get location IDs from join table (or fallback to old lokasyonId)
+        let lokasyonIds = user.lokasyonlar.map((ul) => ul.lokasyonId);
+        if (lokasyonIds.length === 0 && user.lokasyonId) {
+          lokasyonIds = [user.lokasyonId];
+        }
+
         return {
           id: String(user.id),
           email: user.email,
           name: user.name,
-          role: user.role,
+          role: mapRole(user.role),
           sirketId: user.sirketId,
-          lokasyonId: user.lokasyonId,
+          lokasyonIds,
         } as unknown as { id: string; email: string; name: string };
       },
     }),
@@ -36,9 +52,9 @@ export const authOptions: NextAuthOptions = {
     async jwt({ token, user }) {
       if (user) {
         const u = user as unknown as Record<string, unknown>;
-        token.role = u.role;
+        token.role = mapRole(u.role as string);
         token.sirketId = u.sirketId;
-        token.lokasyonId = u.lokasyonId;
+        token.lokasyonIds = u.lokasyonIds;
       }
       return token;
     },
@@ -47,7 +63,7 @@ export const authOptions: NextAuthOptions = {
         (session.user as Record<string, unknown>).id = token.sub;
         (session.user as Record<string, unknown>).role = token.role;
         (session.user as Record<string, unknown>).sirketId = token.sirketId;
-        (session.user as Record<string, unknown>).lokasyonId = token.lokasyonId;
+        (session.user as Record<string, unknown>).lokasyonIds = token.lokasyonIds;
       }
       return session;
     },

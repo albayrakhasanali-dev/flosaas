@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { getCurrentUser, buildWhereClause } from "@/lib/rbac";
+import { getCurrentUser, buildWhereClause, isAdmin } from "@/lib/rbac";
 
 // GET - List all cezalar with filters
 export async function GET(req: NextRequest) {
@@ -100,6 +100,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!isAdmin(user)) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   try {
     const body = await req.json();

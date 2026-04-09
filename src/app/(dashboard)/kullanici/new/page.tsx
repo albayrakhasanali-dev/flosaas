@@ -9,7 +9,7 @@ export default async function YeniKullaniciPage() {
   if (!session) redirect("/login");
 
   const role = (session.user as Record<string, unknown>)?.role as string;
-  if (role === "lokasyon_sefi") redirect("/");
+  if (role !== "admin") redirect("/");
 
   return (
     <div className="flex min-h-screen">

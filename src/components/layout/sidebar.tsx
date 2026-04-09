@@ -27,7 +27,7 @@ interface MenuItem {
   icon: React.ComponentType<{ size?: number }>;
   badge?: string;
   section?: string;
-  requiredRole?: string; // minimum role needed: "super_admin" or "sirket_yoneticisi"
+  requiredRole?: string; // minimum role needed: "admin"
 }
 
 const menuItems: MenuItem[] = [
@@ -42,8 +42,8 @@ const menuItems: MenuItem[] = [
   { href: "/muayene-takip", label: "Muayene Takip", icon: ClipboardCheck, section: "Takip Modulleri", badge: "🔍" },
   { href: "/sigorta-takip", label: "Sigorta Takip", icon: Shield, section: "Takip Modulleri", badge: "🛡️" },
   { href: "/yapilacaklar", label: "Yapilacaklar", icon: ListTodo, section: "Takip Modulleri", badge: "📋" },
-  { href: "/mail-ayarlari", label: "Mail Ayarlari", icon: Mail, section: "Takip Modulleri", badge: "✉️", requiredRole: "sirket_yoneticisi" },
-  { href: "/kullanicilar", label: "Kullanici Yonetimi", icon: Users, section: "Yonetim", badge: "👥", requiredRole: "sirket_yoneticisi" },
+  { href: "/mail-ayarlari", label: "Mail Ayarlari", icon: Mail, section: "Takip Modulleri", badge: "✉️", requiredRole: "admin" },
+  { href: "/kullanicilar", label: "Kullanici Yonetimi", icon: Users, section: "Yonetim", badge: "👥", requiredRole: "admin" },
 ];
 
 export default function Sidebar() {
@@ -51,18 +51,16 @@ export default function Sidebar() {
   const { data: session } = useSession();
 
   const roleLabels: Record<string, string> = {
-    super_admin: "Super Admin",
-    sirket_yoneticisi: "Sirket Yoneticisi",
-    lokasyon_sefi: "Lokasyon Sefi",
+    admin: "Admin",
+    personel: "Personel",
   };
 
   const userRole = (session?.user as Record<string, unknown>)?.role as string;
 
-  // Role hierarchy check: super_admin >= sirket_yoneticisi >= lokasyon_sefi
+  // Role hierarchy check: admin >= personel
   const roleHierarchy: Record<string, number> = {
-    super_admin: 3,
-    sirket_yoneticisi: 2,
-    lokasyon_sefi: 1,
+    admin: 2,
+    personel: 1,
   };
 
   const hasRequiredRole = (requiredRole?: string) => {

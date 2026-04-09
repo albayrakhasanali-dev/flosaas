@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { getCurrentUser, buildWhereClause, canCreate } from "@/lib/rbac";
+import { getCurrentUser, buildWhereClause, isAdmin } from "@/lib/rbac";
 import { enrichAracWithComputed } from "@/lib/utils";
 
 export async function GET(req: NextRequest) {
@@ -97,14 +97,14 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  if (!canCreate(user)) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (!isAdmin(user)) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const body = await req.json();
   const arac = await prisma.t_Arac_Master.create({
     data: {
       plaka: body.plaka,
       durumId: body.durumId,
-      sirketId: user.role === "sirket_yoneticisi" ? user.sirketId : body.sirketId,
+      sirketId: body.sirketId,
       lokasyonId: body.lokasyonId,
       mulkiyetTipi: body.mulkiyetTipi,
       markaModelTicariAdi: body.markaModelTicariAdi,

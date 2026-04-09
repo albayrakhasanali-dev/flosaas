@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { getCurrentUser } from "@/lib/rbac";
+import { getCurrentUser, isAdmin } from "@/lib/rbac";
 import { hashPassword } from "@/lib/password";
 
 // GET - List users with filters, pagination, summary
@@ -14,8 +14,6 @@ export async function GET(req: NextRequest) {
   // Simple mode: return minimal data for dropdowns (backward compatible)
   if (mode === "simple") {
     const where: Record<string, unknown> = { isActive: true };
-    if (user.role === "sirket_yoneticisi") where.sirketId = user.sirketId;
-    else if (user.role === "lokasyon_sefi") where.lokasyonId = user.lokasyonId;
 
     const kullanicilar = await prisma.user.findMany({
       where,
@@ -26,7 +24,7 @@ export async function GET(req: NextRequest) {
   }
 
   // Full mode: management view (admin only)
-  if (user.role === "lokasyon_sefi") {
+  if (!isAdmin(user)) {
     return NextResponse.json({ error: "Yetkiniz yok" }, { status: 403 });
   }
 
@@ -39,9 +37,6 @@ export async function GET(req: NextRequest) {
 
   // RBAC filter
   const filters: Record<string, unknown>[] = [];
-  if (user.role === "sirket_yoneticisi") {
-    filters.push({ sirketId: user.sirketId });
-  }
 
   if (role) filters.push({ role });
   if (isActive !== null && isActive !== "") {
@@ -83,16 +78,13 @@ export async function GET(req: NextRequest) {
   ]);
 
   // Summary stats
-  const baseWhere = user.role === "sirket_yoneticisi" ? { sirketId: user.sirketId } : {};
-
-  const [toplamKullanici, aktifKullanici, pasifKullanici, superAdminSayisi, yoneticiSayisi, sefSayisi] =
+  const [toplamKullanici, aktifKullanici, pasifKullanici, adminSayisi, personelSayisi] =
     await Promise.all([
-      prisma.user.count({ where: baseWhere }),
-      prisma.user.count({ where: { ...baseWhere, isActive: true } }),
-      prisma.user.count({ where: { ...baseWhere, isActive: false } }),
-      prisma.user.count({ where: { ...baseWhere, role: "super_admin" } }),
-      prisma.user.count({ where: { ...baseWhere, role: "sirket_yoneticisi" } }),
-      prisma.user.count({ where: { ...baseWhere, role: "lokasyon_sefi" } }),
+      prisma.user.count(),
+      prisma.user.count({ where: { isActive: true } }),
+      prisma.user.count({ where: { isActive: false } }),
+      prisma.user.count({ where: { role: "admin" } }),
+      prisma.user.count({ where: { role: "personel" } }),
     ]);
 
   return NextResponse.json({
@@ -107,9 +99,8 @@ export async function GET(req: NextRequest) {
       toplamKullanici,
       aktifKullanici,
       pasifKullanici,
-      superAdminSayisi,
-      yoneticiSayisi,
-      sefSayisi,
+      adminSayisi,
+      personelSayisi,
     },
   });
 }
@@ -119,8 +110,8 @@ export async function POST(req: NextRequest) {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  // Only super_admin and sirket_yoneticisi can create
-  if (user.role === "lokasyon_sefi") {
+  // Only admin can create users
+  if (!isAdmin(user)) {
     return NextResponse.json({ error: "Kullanici olusturma yetkiniz yok" }, { status: 403 });
   }
 
@@ -135,19 +126,9 @@ export async function POST(req: NextRequest) {
     }
 
     // Validate role
-    const validRoles = ["super_admin", "sirket_yoneticisi", "lokasyon_sefi"];
+    const validRoles = ["admin", "personel"];
     if (!validRoles.includes(body.role)) {
       return NextResponse.json({ error: "Gecersiz rol" }, { status: 400 });
-    }
-
-    // sirket_yoneticisi cannot create super_admin
-    if (user.role === "sirket_yoneticisi" && body.role === "super_admin") {
-      return NextResponse.json({ error: "Super admin olusturma yetkiniz yok" }, { status: 403 });
-    }
-
-    // sirket_yoneticisi must assign to own company
-    if (user.role === "sirket_yoneticisi") {
-      body.sirketId = user.sirketId;
     }
 
     // Check email uniqueness
@@ -158,6 +139,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Bu email adresi zaten kayitli" }, { status: 409 });
     }
 
+    // Create user
     const newUser = await prisma.user.create({
       data: {
         email: body.email,
@@ -165,7 +147,6 @@ export async function POST(req: NextRequest) {
         name: body.name || null,
         role: body.role,
         sirketId: body.sirketId ? parseInt(body.sirketId) : null,
-        lokasyonId: body.lokasyonId ? parseInt(body.lokasyonId) : null,
         isActive: true,
       },
       select: {
@@ -175,10 +156,19 @@ export async function POST(req: NextRequest) {
         role: true,
         isActive: true,
         sirket: { select: { sirketAdi: true } },
-        lokasyon: { select: { lokasyonAdi: true } },
         createdAt: true,
       },
     });
+
+    // Handle lokasyonIds: create UserLokasyon join records
+    if (body.lokasyonIds && Array.isArray(body.lokasyonIds) && body.lokasyonIds.length > 0) {
+      await prisma.userLokasyon.createMany({
+        data: body.lokasyonIds.map((lokId: number) => ({
+          userId: newUser.id,
+          lokasyonId: typeof lokId === "string" ? parseInt(lokId) : lokId,
+        })),
+      });
+    }
 
     return NextResponse.json(newUser, { status: 201 });
   } catch (error) {
