@@ -57,9 +57,15 @@ async function handleExpiredVehicles() {
       include: { durum: true, lokasyon: true },
     });
 
+    // Skip vehicles updated in the last 24 hours (manual status change protection)
+    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
     const expiredAraclar = activeAraclar.filter((a) => {
-      const mKalan = computeMuayeneKalanGun(a.muayeneBitisTarihi);
-      const sKalan = computeSigortaKalanGun(a.sigortaBitisTarihi);
+      // If vehicle was manually updated recently, skip it
+      if (a.updatedAt > oneDayAgo) return false;
+      // Only check expiry for vehicles that require muayene/sigorta
+      const mKalan = a.muayeneGerekli ? computeMuayeneKalanGun(a.muayeneBitisTarihi) : null;
+      const sKalan = a.sigortaGerekli ? computeSigortaKalanGun(a.sigortaBitisTarihi) : null;
       return (mKalan !== null && mKalan < 0) || (sKalan !== null && sKalan < 0);
     });
 
