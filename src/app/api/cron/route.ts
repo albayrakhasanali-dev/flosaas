@@ -46,24 +46,19 @@ export async function POST(req: NextRequest) {
 }
 
 // ============================================
-// JOB 1: Suresi gecen araclari YATAN yap
+// JOB 1: Suresi gecen araclari bildir (durum degistirmez)
 // ============================================
 async function handleExpiredVehicles() {
   try {
+    // Find active vehicles with expired muayene/sigorta — notify only, no status change
     const activeAraclar = await prisma.t_Arac_Master.findMany({
       where: {
-        durum: { durumAdi: "🟢 AKTİF" },
+        durum: { durumAdi: { notIn: ["⚫ YATAN", "🟣 SATILDI"] } },
       },
       include: { durum: true, lokasyon: true },
     });
 
-    // Skip vehicles updated in the last 24 hours (manual status change protection)
-    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-
     const expiredAraclar = activeAraclar.filter((a) => {
-      // If vehicle was manually updated recently, skip it
-      if (a.updatedAt > oneDayAgo) return false;
-      // Only check expiry for vehicles that require muayene/sigorta
       const mKalan = a.muayeneGerekli ? computeMuayeneKalanGun(a.muayeneBitisTarihi) : null;
       const sKalan = a.sigortaGerekli ? computeSigortaKalanGun(a.sigortaBitisTarihi) : null;
       return (mKalan !== null && mKalan < 0) || (sKalan !== null && sKalan < 0);
@@ -81,18 +76,6 @@ async function handleExpiredVehicles() {
       return NextResponse.json({ message: "No expired vehicles", count: 0 });
     }
 
-    // Update status to YATAN
-    const yatanDurum = await prisma.t_Durum.findUnique({
-      where: { durumAdi: "⚫ YATAN" },
-    });
-
-    if (yatanDurum) {
-      await prisma.t_Arac_Master.updateMany({
-        where: { id: { in: expiredAraclar.map((a) => a.id) } },
-        data: { durumId: yatanDurum.id },
-      });
-    }
-
     // Collect email recipients
     const emailTargets = new Set<string>();
     if (process.env.ADMIN_EMAIL) emailTargets.add(process.env.ADMIN_EMAIL);
@@ -101,7 +84,7 @@ async function handleExpiredVehicles() {
       if (a.lokasyon?.sorumluEmail) emailTargets.add(a.lokasyon.sorumluEmail);
     }
 
-    // Send email notification
+    // Send email notification (no status change)
     const alarmData = expiredAraclar.map((a) => ({
       plaka: a.plaka,
       lokasyon: a.lokasyon?.lokasyonAdi || "-",
@@ -118,13 +101,13 @@ async function handleExpiredVehicles() {
       data: {
         jobName: "muayene_sigorta_kontrol",
         status: "success",
-        message: `Updated ${expiredAraclar.length} vehicles to YATAN status`,
+        message: `${expiredAraclar.length} expired vehicles notified (no status change)`,
         affectedCount: expiredAraclar.length,
       },
     });
 
     return NextResponse.json({
-      message: `Processed ${expiredAraclar.length} expired vehicles`,
+      message: `Notified ${expiredAraclar.length} expired vehicles`,
       count: expiredAraclar.length,
       vehicles: alarmData,
     });
