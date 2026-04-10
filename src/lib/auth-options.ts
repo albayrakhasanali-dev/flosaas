@@ -56,6 +56,14 @@ export const authOptions: NextAuthOptions = {
         token.sirketId = u.sirketId;
         token.lokasyonIds = u.lokasyonIds;
       }
+      // Always map role for existing tokens with old role names
+      if (token.role) {
+        token.role = mapRole(token.role as string);
+      }
+      // Ensure lokasyonIds is always an array (old tokens may lack it)
+      if (!Array.isArray(token.lokasyonIds)) {
+        token.lokasyonIds = [];
+      }
       return token;
     },
     async session({ session, token }) {
@@ -63,7 +71,7 @@ export const authOptions: NextAuthOptions = {
         (session.user as Record<string, unknown>).id = token.sub;
         (session.user as Record<string, unknown>).role = token.role;
         (session.user as Record<string, unknown>).sirketId = token.sirketId;
-        (session.user as Record<string, unknown>).lokasyonIds = token.lokasyonIds;
+        (session.user as Record<string, unknown>).lokasyonIds = token.lokasyonIds || [];
       }
       return session;
     },

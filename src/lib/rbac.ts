@@ -21,8 +21,9 @@ export async function getCurrentUser(): Promise<SessionUser | null> {
 export function buildWhereClause(user: SessionUser): Record<string, unknown> {
   if (user.role === "admin") return {};
   // Personel: filter by assigned locations
-  if (user.lokasyonIds.length === 0) return { id: -1 }; // no locations = no access
-  return { lokasyonId: { in: user.lokasyonIds } };
+  const ids = user.lokasyonIds || [];
+  if (ids.length === 0) return { id: -1 }; // no locations = no access
+  return { lokasyonId: { in: ids } };
 }
 
 export function isAdmin(user: SessionUser): boolean {
