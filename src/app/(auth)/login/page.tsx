@@ -36,24 +36,10 @@ export default function LoginPage() {
     <div className="min-h-screen bg-gradient-to-br from-[#1a0a2e] via-[#4a0e2a] to-[#1a0a2e] flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <div className="flex justify-center mb-3">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 200" className="w-72 h-auto">
-              <defs>
-                <linearGradient id="loginOrangeGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                  <stop offset="0%" stopColor="#f97316" />
-                  <stop offset="100%" stopColor="#fb923c" />
-                </linearGradient>
-              </defs>
-              <g transform="translate(40, 50)">
-                <rect x="0" y="0" width="18" height="100" fill="url(#loginOrangeGradient)" rx="3" />
-                <rect x="28" y="25" width="18" height="75" fill="url(#loginOrangeGradient)" rx="3" />
-                <rect x="56" y="50" width="18" height="50" fill="url(#loginOrangeGradient)" rx="3" />
-              </g>
-              <text x="130" y="132" fontFamily="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" fontSize="86" fontWeight="800" fill="url(#loginOrangeGradient)" letterSpacing="6">HARMAN</text>
-              <rect x="135" y="150" width="390" height="5" fill="url(#loginOrangeGradient)" rx="2" />
-            </svg>
-          </div>
-          <p className="text-[#c9a0b0] mt-1">Filo Yonetim ve Operasyon Kokpiti</p>
+          <h1 className="text-4xl font-bold text-white">
+            <span className="text-[#89CFF0]">Flo</span>SaaS
+          </h1>
+          <p className="text-[#c9a0b0] mt-2">Filo Yonetim ve Operasyon Kokpiti</p>
         </div>
 
         <form
