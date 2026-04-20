@@ -19,6 +19,15 @@ export async function GET(req: NextRequest) {
   const job = searchParams.get("job") || "expired_vehicles";
   const force = searchParams.get("force") === "true";
 
+  // "all" runs both jobs — safer: one cron triggers everything
+  if (job === "all") {
+    const expiredResult = await handleExpiredVehicles();
+    const weeklyResult = await handleWeeklyReport(force);
+    const expiredData = await expiredResult.json().catch(() => ({}));
+    const weeklyData = await weeklyResult.json().catch(() => ({}));
+    return NextResponse.json({ expired: expiredData, weekly: weeklyData });
+  }
+
   if (job === "weekly_report") {
     return handleWeeklyReport(force);
   }
