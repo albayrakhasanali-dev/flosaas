@@ -9,8 +9,8 @@ export async function GET() {
 
   const rbacWhere = buildWhereClause(user);
 
-  // Exclude SATILDI from dashboard counts
-  const notSatildi = { durum: { durumAdi: { not: "🟣 SATILDI" } } };
+  // Exclude SATILDI and TRAFİKTEN ÇEKME from dashboard counts
+  const notSatildi = { durum: { durumAdi: { notIn: ["🟣 SATILDI", "🟠 TRAFİKTEN ÇEKME"] } } };
   const baseWhere = { AND: [rbacWhere, notSatildi] };
 
   // KPI counts

@@ -35,15 +35,18 @@ export async function GET(req: NextRequest) {
       filterWhere = { durum: { durumAdi: "🔴 HUKUKİ" } };
       break;
     case "utts_eksik":
-      filterWhere = { uttsDurum: "Eksik", durum: { durumAdi: { not: "🟣 SATILDI" } } };
+      filterWhere = { uttsDurum: "Eksik", durum: { durumAdi: { notIn: ["🟣 SATILDI", "🟠 TRAFİKTEN ÇEKME"] } } };
       break;
     case "satildi":
       filterWhere = { durum: { durumAdi: "🟣 SATILDI" } };
       break;
+    case "trafikten_cekilen":
+      filterWhere = { durum: { durumAdi: "🟠 TRAFİKTEN ÇEKME" } };
+      break;
     default:
-      // "all" filter: exclude SATILDI from the main list
+      // "all" filter: exclude SATILDI and TRAFİKTEN ÇEKME from the main list
       if (!filter || filter === "all") {
-        filterWhere = { durum: { durumAdi: { not: "🟣 SATILDI" } } };
+        filterWhere = { durum: { durumAdi: { notIn: ["🟣 SATILDI", "🟠 TRAFİKTEN ÇEKME"] } } };
       }
       break;
   }

@@ -43,6 +43,7 @@ const filterLabels: Record<string, string> = {
   hukuki: "🔴 Hukuki ve Satis",
   utts_eksik: "⚠️ UTTS Montaj Bekleyenler",
   satildi: "🟣 Satilan Araclar",
+  trafikten_cekilen: "🟠 Trafikten Cekilen Araclar",
 };
 
 export default function FiloClient() {
@@ -467,6 +468,7 @@ export default function FiloClient() {
                           a.durum?.durumAdi.includes("HUKUKİ") ? "badge-danger" :
                           a.durum?.durumAdi.includes("BAKIMDA") ? "badge-warning" :
                           a.durum?.durumAdi.includes("SATILDI") ? "bg-purple-100 text-purple-700" :
+                          a.durum?.durumAdi.includes("TRAFİKTEN") ? "bg-orange-100 text-orange-700" :
                           "badge-neutral"
                         }`}>
                           {a.durum?.durumAdi || "-"}

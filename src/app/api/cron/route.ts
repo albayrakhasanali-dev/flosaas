@@ -62,7 +62,7 @@ async function handleExpiredVehicles() {
     // Find active vehicles with expired muayene/sigorta — notify only, no status change
     const activeAraclar = await prisma.t_Arac_Master.findMany({
       where: {
-        durum: { durumAdi: { notIn: ["⚫ YATAN", "🟣 SATILDI"] } },
+        durum: { durumAdi: { notIn: ["⚫ YATAN", "🟣 SATILDI", "🟠 TRAFİKTEN ÇEKME"] } },
       },
       include: { durum: true, lokasyon: true },
     });
@@ -188,7 +188,7 @@ async function handleWeeklyReport(force = false) {
       }
 
       const aracBaseWhere = {
-        durum: { durumAdi: { notIn: ["⚫ YATAN", "🟡 BAKIMDA", "🟣 SATILDI"] } },
+        durum: { durumAdi: { notIn: ["⚫ YATAN", "🟡 BAKIMDA", "🟣 SATILDI", "🟠 TRAFİKTEN ÇEKME"] } },
       };
 
       const reportData: WeeklyReportData = {
@@ -350,7 +350,7 @@ async function handleWeeklyReportDefault() {
   thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
 
   const aracBaseWhere = {
-    durum: { durumAdi: { notIn: ["⚫ YATAN", "🟡 BAKIMDA", "🟣 SATILDI"] } },
+    durum: { durumAdi: { notIn: ["⚫ YATAN", "🟡 BAKIMDA", "🟣 SATILDI", "🟠 TRAFİKTEN ÇEKME"] } },
   };
 
   const [suresiGecmisMuayeneler, yaklasanMuayeneler, suresiGecmisSigortalar, yaklasanSigortalar] = await Promise.all([
