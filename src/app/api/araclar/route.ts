@@ -44,8 +44,9 @@ export async function GET(req: NextRequest) {
       filterWhere = { durum: { durumAdi: "🟠 TRAFİKTEN ÇEKME" } };
       break;
     default:
-      // "all" filter: exclude SATILDI and TRAFİKTEN ÇEKME from the main list
-      if (!filter || filter === "all") {
+      // "all" filter: exclude SATILDI and TRAFİKTEN ÇEKME from the main list,
+      // but only when the user has not explicitly picked a durum in the advanced filter.
+      if ((!filter || filter === "all") && !durumId) {
         filterWhere = { durum: { durumAdi: { notIn: ["🟣 SATILDI", "🟠 TRAFİKTEN ÇEKME"] } } };
       }
       break;
