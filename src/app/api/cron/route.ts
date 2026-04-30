@@ -7,12 +7,13 @@ import type { WeeklyReportData, YapilacakReportData } from "@/lib/email";
 // Cron secret for security — must be set in environment
 const CRON_SECRET = process.env.CRON_SECRET;
 
-// Vercel cron uses GET requests
+// Vercel cron uses GET requests; Vercel automatically attaches
+// `Authorization: Bearer ${CRON_SECRET}` if CRON_SECRET env var is set.
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
-  const secret = searchParams.get("secret") || req.headers.get("authorization")?.replace("Bearer ", "");
+  const authHeader = req.headers.get("authorization")?.replace("Bearer ", "");
 
-  if (!CRON_SECRET || secret !== CRON_SECRET) {
+  if (!CRON_SECRET || authHeader !== CRON_SECRET) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

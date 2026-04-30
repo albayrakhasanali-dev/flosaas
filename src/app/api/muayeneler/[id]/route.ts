@@ -1,8 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { getCurrentUser, isAdmin } from "@/lib/rbac";
+import { getCurrentUser, isAdmin, buildWhereClause } from "@/lib/rbac";
 
-// GET - Get single muayene detail
+function parseId(raw: string): number | null {
+  const n = Number(raw);
+  return Number.isInteger(n) && n > 0 ? n : null;
+}
+
+function parseDateOrNull(value: unknown): Date | null {
+  if (!value) return null;
+  const d = new Date(String(value));
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
+// GET - Get single muayene detail (RBAC: must belong to an accessible vehicle)
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -11,8 +22,11 @@ export async function GET(
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { id } = await params;
-  const muayene = await prisma.t_Muayene.findUnique({
-    where: { id: parseInt(id) },
+  const parsedId = parseId(id);
+  if (parsedId === null) return NextResponse.json({ error: "Gecersiz ID" }, { status: 400 });
+
+  const muayene = await prisma.t_Muayene.findFirst({
+    where: { id: parsedId, arac: buildWhereClause(user) },
     include: {
       arac: {
         select: {
@@ -35,7 +49,7 @@ export async function GET(
   return NextResponse.json(muayene);
 }
 
-// PUT - Update muayene
+// PUT - Update muayene (RBAC: must belong to an accessible vehicle)
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -44,11 +58,30 @@ export async function PUT(
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { id } = await params;
+  const parsedId = parseId(id);
+  if (parsedId === null) return NextResponse.json({ error: "Gecersiz ID" }, { status: 400 });
+
+  // Verify access via the related vehicle BEFORE updating.
+  const existing = await prisma.t_Muayene.findFirst({
+    where: { id: parsedId, arac: buildWhereClause(user) },
+    select: { id: true, aracId: true },
+  });
+  if (!existing) {
+    return NextResponse.json({ error: "Muayene bulunamadi" }, { status: 404 });
+  }
+
   try {
     const body = await request.json();
 
+    if (body.muayeneTarihi && parseDateOrNull(body.muayeneTarihi) === null) {
+      return NextResponse.json({ error: "Gecersiz muayeneTarihi" }, { status: 400 });
+    }
+    if (body.gecerlilikBitisTarihi && parseDateOrNull(body.gecerlilikBitisTarihi) === null) {
+      return NextResponse.json({ error: "Gecersiz gecerlilikBitisTarihi" }, { status: 400 });
+    }
+
     const muayene = await prisma.t_Muayene.update({
-      where: { id: parseInt(id) },
+      where: { id: parsedId },
       data: {
         muayeneTarihi: body.muayeneTarihi ? new Date(body.muayeneTarihi) : undefined,
         gecerlilikBitisTarihi: body.gecerlilikBitisTarihi ? new Date(body.gecerlilikBitisTarihi) : undefined,
@@ -88,7 +121,7 @@ export async function PUT(
   }
 }
 
-// DELETE - Delete muayene
+// DELETE - Delete muayene (admin only, RBAC enforced)
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -101,8 +134,11 @@ export async function DELETE(
   }
 
   const { id } = await params;
+  const parsedId = parseId(id);
+  if (parsedId === null) return NextResponse.json({ error: "Gecersiz ID" }, { status: 400 });
+
   try {
-    const deleted = await prisma.t_Muayene.delete({ where: { id: parseInt(id) } });
+    const deleted = await prisma.t_Muayene.delete({ where: { id: parsedId } });
 
     // Re-sync muayeneBitisTarihi
     const latest = await prisma.t_Muayene.findFirst({

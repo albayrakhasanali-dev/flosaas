@@ -1,6 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { getCurrentUser, buildWhereClause } from "@/lib/rbac";
+import { getCurrentUser, buildWhereClause, findAccessibleVehicle } from "@/lib/rbac";
+
+function parseDateOrNull(value: unknown): Date | null {
+  if (!value) return null;
+  const d = new Date(String(value));
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
+const MAX_LIMIT = 200;
+function parseLimit(raw: string | null, fallback = 25): number {
+  const n = parseInt(raw || String(fallback));
+  if (!Number.isFinite(n) || n <= 0) return fallback;
+  return Math.min(n, MAX_LIMIT);
+}
 
 // GET - List all sigorta records with filters
 export async function GET(req: NextRequest) {
@@ -14,7 +27,7 @@ export async function GET(req: NextRequest) {
   const durum = searchParams.get("durum"); // gecerli, yaklasiyor, suresi_gecmis
   const aracId = searchParams.get("aracId");
   const page = parseInt(searchParams.get("page") || "1");
-  const limit = parseInt(searchParams.get("limit") || "25");
+  const limit = parseLimit(searchParams.get("limit"));
 
   const rbacWhere = buildWhereClause(user);
   const filters: Record<string, unknown>[] = [];
@@ -206,23 +219,29 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const arac = await prisma.t_Arac_Master.findUnique({
-      where: { id: parseInt(body.aracId) },
-    });
+    const baslangicTarihi = parseDateOrNull(body.baslangicTarihi);
+    const bitisTarihi = parseDateOrNull(body.bitisTarihi);
+    if (!baslangicTarihi || !bitisTarihi) {
+      return NextResponse.json({ error: "Tarih alanlari gecersiz" }, { status: 400 });
+    }
+
+    // RBAC: personel may only create sigorta records for vehicles in their lokasyon
+    const aracId = parseInt(body.aracId);
+    const arac = await findAccessibleVehicle(user, aracId);
     if (!arac) {
       return NextResponse.json({ error: "Arac bulunamadi" }, { status: 404 });
     }
 
     const sigorta = await prisma.t_Sigorta.create({
       data: {
-        aracId: parseInt(body.aracId),
+        aracId,
         sigortaTuru: body.sigortaTuru,
         policeNo: body.policeNo || null,
         sigortaSirketi: body.sigortaSirketi || null,
         acenteAdi: body.acenteAdi || null,
         acenteTelefon: body.acenteTelefon || null,
-        baslangicTarihi: new Date(body.baslangicTarihi),
-        bitisTarihi: new Date(body.bitisTarihi),
+        baslangicTarihi,
+        bitisTarihi,
         primTutari: body.primTutari ? parseFloat(body.primTutari) : null,
         odemeSekli: body.odemeSekli || null,
         taksitSayisi: body.taksitSayisi ? parseInt(body.taksitSayisi) : null,
@@ -240,13 +259,13 @@ export async function POST(req: NextRequest) {
     // Sync dates on T_Arac_Master
     if (body.sigortaTuru === "trafik") {
       await prisma.t_Arac_Master.update({
-        where: { id: parseInt(body.aracId) },
-        data: { sigortaBitisTarihi: new Date(body.bitisTarihi) },
+        where: { id: aracId },
+        data: { sigortaBitisTarihi: bitisTarihi },
       });
     } else if (body.sigortaTuru === "kasko") {
       await prisma.t_Arac_Master.update({
-        where: { id: parseInt(body.aracId) },
-        data: { kaskoBitisTarihi: new Date(body.bitisTarihi) },
+        where: { id: aracId },
+        data: { kaskoBitisTarihi: bitisTarihi },
       });
     }
 

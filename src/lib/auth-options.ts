@@ -1,7 +1,7 @@
 import { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import prisma from "./prisma";
-import { verifyPassword } from "./password";
+import { verifyPassword, needsRehash, hashPassword } from "./password";
 
 // Map legacy role names to new ones
 function mapRole(role: string): string {
@@ -29,7 +29,20 @@ export const authOptions: NextAuthOptions = {
         });
 
         if (!user || !user.isActive) return null;
-        if (!verifyPassword(credentials.password, user.password)) return null;
+        if (!(await verifyPassword(credentials.password, user.password))) return null;
+
+        // One-shot upgrade legacy SHA-256 hashes to bcrypt on successful login.
+        if (needsRehash(user.password)) {
+          try {
+            const upgraded = await hashPassword(credentials.password);
+            await prisma.user.update({
+              where: { id: user.id },
+              data: { password: upgraded },
+            });
+          } catch (err) {
+            console.warn("Password rehash failed:", err);
+          }
+        }
 
         // Get location IDs from join table (or fallback to old lokasyonId)
         let lokasyonIds = user.lokasyonlar.map((ul) => ul.lokasyonId);

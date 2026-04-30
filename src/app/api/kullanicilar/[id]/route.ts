@@ -95,7 +95,7 @@ export async function PUT(
 
     // Password: only update if provided and non-empty
     if (body.password && body.password.trim() !== "") {
-      updateData.password = hashPassword(body.password);
+      updateData.password = await hashPassword(body.password);
     }
 
     const updated = await prisma.user.update({

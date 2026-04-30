@@ -11,13 +11,31 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const mode = searchParams.get("mode"); // "simple" for dropdown usage
 
-  // Simple mode: return minimal data for dropdowns (backward compatible)
+  // Simple mode: minimal data for "atanan kişi" dropdowns. Personel users
+  // only see other users in their assigned lokasyon (or admins, who can
+  // serve any location). Email is omitted to reduce PII surface.
   if (mode === "simple") {
-    const where: Record<string, unknown> = { isActive: true };
+    const baseWhere: Record<string, unknown> = { isActive: true };
+
+    let where: Record<string, unknown> = baseWhere;
+    if (!isAdmin(user)) {
+      const ids = user.lokasyonIds || [];
+      where = {
+        AND: [
+          baseWhere,
+          {
+            OR: [
+              { role: "admin" },
+              ids.length > 0 ? { lokasyonlar: { some: { lokasyonId: { in: ids } } } } : { id: -1 },
+            ],
+          },
+        ],
+      };
+    }
 
     const kullanicilar = await prisma.user.findMany({
       where,
-      select: { id: true, name: true, email: true, role: true },
+      select: { id: true, name: true, role: true },
       orderBy: { name: "asc" },
     });
     return NextResponse.json(kullanicilar);
@@ -33,7 +51,8 @@ export async function GET(req: NextRequest) {
   const isActive = searchParams.get("isActive");
   const sirketId = searchParams.get("sirketId");
   const page = parseInt(searchParams.get("page") || "1");
-  const limit = parseInt(searchParams.get("limit") || "25");
+  const rawLimit = parseInt(searchParams.get("limit") || "25");
+  const limit = !Number.isFinite(rawLimit) || rawLimit <= 0 ? 25 : Math.min(rawLimit, 200);
 
   // RBAC filter
   const filters: Record<string, unknown>[] = [];
@@ -143,7 +162,7 @@ export async function POST(req: NextRequest) {
     const newUser = await prisma.user.create({
       data: {
         email: body.email,
-        password: hashPassword(body.password),
+        password: await hashPassword(body.password),
         name: body.name || null,
         role: body.role,
         sirketId: body.sirketId ? parseInt(body.sirketId) : null,

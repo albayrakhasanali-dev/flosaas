@@ -15,7 +15,8 @@ export async function GET(req: NextRequest) {
   const atananId = searchParams.get("atananId");
   const aracId = searchParams.get("aracId");
   const page = parseInt(searchParams.get("page") || "1");
-  const limit = parseInt(searchParams.get("limit") || "25");
+  const rawLimit = parseInt(searchParams.get("limit") || "25");
+  const limit = !Number.isFinite(rawLimit) || rawLimit <= 0 ? 25 : Math.min(rawLimit, 200);
 
   const rbacWhere = buildWhereClause(user);
   const filters: Record<string, unknown>[] = [];

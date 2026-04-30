@@ -69,15 +69,19 @@ export async function POST(req: NextRequest) {
     } catch (emailError: unknown) {
       const errMsg = emailError instanceof Error ? emailError.message : String(emailError);
       console.error("SMTP Error Detail:", errMsg);
+      // Don't leak SMTP host / credentials / IP details to the client.
       return NextResponse.json({
         success: false,
-        message: `SMTP Hata: ${errMsg}`,
+        message: "Test email gonderilemedi. Lutfen sunucu loglarina bakin.",
         smtpConfigured: !!(process.env.SMTP_USER && process.env.SMTP_PASS),
       });
     }
   } catch (error: unknown) {
     const errMsg = error instanceof Error ? error.message : String(error);
     console.error("Test email error:", errMsg);
-    return NextResponse.json({ error: `Test email gonderilemedi: ${errMsg}` }, { status: 500 });
+    return NextResponse.json(
+      { error: "Test email gonderilemedi. Sunucu loglarina bakin." },
+      { status: 500 }
+    );
   }
 }

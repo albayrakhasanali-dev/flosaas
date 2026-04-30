@@ -1,7 +1,7 @@
 {
   "crons": [
     {
-      "path": "/api/cron?job=all&secret=flosaas-cron-52e0ee3cbc8df7a7338064e1",
+      "path": "/api/cron?job=all",
       "schedule": "0 5 * * *"
     }
   ]

@@ -1,8 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { getCurrentUser, isAdmin } from "@/lib/rbac";
+import { getCurrentUser, isAdmin, buildWhereClause } from "@/lib/rbac";
 
-// GET - Get single yapilacak detail
+function parseId(raw: string): number | null {
+  const n = Number(raw);
+  return Number.isInteger(n) && n > 0 ? n : null;
+}
+
+// GET - Get single yapilacak detail. RBAC: a personel may only see tasks
+// that are unassigned to a vehicle (general tasks), assigned to themselves,
+// or attached to a vehicle in their assigned lokasyon.
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -11,8 +18,22 @@ export async function GET(
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { id } = await params;
-  const yapilacak = await prisma.t_Yapilacak.findUnique({
-    where: { id: parseInt(id) },
+  const parsedId = parseId(id);
+  if (parsedId === null) return NextResponse.json({ error: "Gecersiz ID" }, { status: 400 });
+
+  const accessFilter = isAdmin(user)
+    ? {}
+    : {
+        OR: [
+          { arac: buildWhereClause(user) },
+          { aracId: null },
+          { atananKullaniciId: parseInt(user.id) },
+          { ekleyenId: parseInt(user.id) },
+        ],
+      };
+
+  const yapilacak = await prisma.t_Yapilacak.findFirst({
+    where: { id: parsedId, ...accessFilter },
     include: {
       arac: {
         select: {
@@ -50,6 +71,9 @@ export async function PUT(
   if (!isAdmin(user)) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const { id } = await params;
+  const parsedId = parseId(id);
+  if (parsedId === null) return NextResponse.json({ error: "Gecersiz ID" }, { status: 400 });
+
   try {
     const body = await request.json();
 
@@ -58,7 +82,7 @@ export async function PUT(
     if (body.durum === "tamamlandi") {
       // Check current record to see if it was already tamamlandi
       const existing = await prisma.t_Yapilacak.findUnique({
-        where: { id: parseInt(id) },
+        where: { id: parsedId },
         select: { durum: true, tamamlanmaTarihi: true },
       });
       if (existing && existing.durum !== "tamamlandi") {
@@ -69,7 +93,7 @@ export async function PUT(
     }
 
     const yapilacak = await prisma.t_Yapilacak.update({
-      where: { id: parseInt(id) },
+      where: { id: parsedId },
       data: {
         baslik: body.baslik,
         aciklama: body.aciklama !== undefined ? (body.aciklama || null) : undefined,
@@ -111,8 +135,11 @@ export async function DELETE(
   }
 
   const { id } = await params;
+  const parsedId = parseId(id);
+  if (parsedId === null) return NextResponse.json({ error: "Gecersiz ID" }, { status: 400 });
+
   try {
-    await prisma.t_Yapilacak.delete({ where: { id: parseInt(id) } });
+    await prisma.t_Yapilacak.delete({ where: { id: parsedId } });
     return NextResponse.json({ success: true });
   } catch {
     return NextResponse.json({ error: "Gorev silinirken hata olustu" }, { status: 500 });

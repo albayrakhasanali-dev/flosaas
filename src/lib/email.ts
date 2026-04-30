@@ -63,8 +63,10 @@ async function createTransporter() {
     name: "localhost",
     servername: originalHost,
     tls: {
+      // We resolve the IP ourselves (DoH/fallback) but TLS must still be
+      // verified against the real hostname — never disable cert checks.
       servername: originalHost,
-      rejectUnauthorized: false,
+      rejectUnauthorized: true,
     },
   };
   return nodemailer.createTransport(opts);

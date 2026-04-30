@@ -144,10 +144,20 @@ export default function FiloClient() {
     if (fMulkiyet) params.set("mulkiyetTipi", fMulkiyet);
     if (fUtts) params.set("uttsDurum", fUtts);
 
-    const res = await fetch(`/api/araclar?${params}`);
-    const json = await res.json();
-    setData(json);
-    setLoading(false);
+    try {
+      const res = await fetch(`/api/araclar?${params}`);
+      if (!res.ok) {
+        // Render an empty grid instead of crashing on { error } payload
+        setData({ data: [], pagination: { page: 1, limit: 25, total: 0, totalPages: 0 } });
+        return;
+      }
+      const json = await res.json();
+      setData(json);
+    } catch {
+      setData({ data: [], pagination: { page: 1, limit: 25, total: 0, totalPages: 0 } });
+    } finally {
+      setLoading(false);
+    }
   }, [filter, search, page, fLokasyon, fSirket, fDurum, fKullanim, fMulkiyet, fUtts]);
 
   useEffect(() => {

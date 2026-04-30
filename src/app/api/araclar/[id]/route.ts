@@ -3,6 +3,11 @@ import prisma from "@/lib/prisma";
 import { getCurrentUser, buildWhereClause, isAdmin } from "@/lib/rbac";
 import { enrichAracWithComputed } from "@/lib/utils";
 
+function parseId(raw: string): number | null {
+  const n = Number(raw);
+  return Number.isInteger(n) && n > 0 ? n : null;
+}
+
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -11,10 +16,12 @@ export async function GET(
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { id } = await params;
+  const parsedId = parseId(id);
+  if (parsedId === null) return NextResponse.json({ error: "Gecersiz ID" }, { status: 400 });
   const rbacWhere = buildWhereClause(user);
 
   const arac = await prisma.t_Arac_Master.findFirst({
-    where: { id: parseInt(id), ...rbacWhere },
+    where: { id: parsedId, ...rbacWhere },
     include: { durum: true, sirket: true, lokasyon: true },
   });
 
@@ -30,10 +37,12 @@ export async function PUT(
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { id } = await params;
+  const parsedId = parseId(id);
+  if (parsedId === null) return NextResponse.json({ error: "Gecersiz ID" }, { status: 400 });
   const rbacWhere = buildWhereClause(user);
 
   const existing = await prisma.t_Arac_Master.findFirst({
-    where: { id: parseInt(id), ...rbacWhere },
+    where: { id: parsedId, ...rbacWhere },
   });
   if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
@@ -78,7 +87,7 @@ export async function PUT(
   Object.keys(updateData).forEach((k) => updateData[k] === undefined && delete updateData[k]);
 
   const updated = await prisma.t_Arac_Master.update({
-    where: { id: parseInt(id) },
+    where: { id: parsedId },
     data: updateData,
     include: { durum: true, sirket: true, lokasyon: true },
   });
@@ -100,11 +109,13 @@ export async function PATCH(
   }
 
   const { id } = await params;
+  const parsedId = parseId(id);
+  if (parsedId === null) return NextResponse.json({ error: "Gecersiz ID" }, { status: 400 });
   const body = await req.json();
 
   const rbacWhere = buildWhereClause(user);
   const existing = await prisma.t_Arac_Master.findFirst({
-    where: { id: parseInt(id), ...rbacWhere },
+    where: { id: parsedId, ...rbacWhere },
   });
   if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
@@ -118,7 +129,7 @@ export async function PATCH(
     }
 
     const updated = await prisma.t_Arac_Master.update({
-      where: { id: parseInt(id) },
+      where: { id: parsedId },
       data: {
         durumId: aktifDurum.id,
         satisTarihi: null,
@@ -137,11 +148,16 @@ export async function PATCH(
     return NextResponse.json({ error: "SATILDI durumu bulunamadi" }, { status: 500 });
   }
 
+  const satisTarihi = body.satisTarihi ? new Date(body.satisTarihi) : new Date();
+  if (Number.isNaN(satisTarihi.getTime())) {
+    return NextResponse.json({ error: "Gecersiz satisTarihi" }, { status: 400 });
+  }
+
   const updated = await prisma.t_Arac_Master.update({
-    where: { id: parseInt(id) },
+    where: { id: parsedId },
     data: {
       durumId: satildiDurum.id,
-      satisTarihi: body.satisTarihi ? new Date(body.satisTarihi) : new Date(),
+      satisTarihi,
       satisNotu: body.satisNotu || null,
     },
     include: { durum: true, sirket: true, lokasyon: true },
@@ -159,6 +175,9 @@ export async function DELETE(
   if (!isAdmin(user)) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const { id } = await params;
-  await prisma.t_Arac_Master.delete({ where: { id: parseInt(id) } });
+  const parsedId = parseId(id);
+  if (parsedId === null) return NextResponse.json({ error: "Gecersiz ID" }, { status: 400 });
+
+  await prisma.t_Arac_Master.delete({ where: { id: parsedId } });
   return NextResponse.json({ success: true });
 }

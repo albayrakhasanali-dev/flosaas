@@ -11,7 +11,16 @@ export async function GET(req: NextRequest) {
   const filter = searchParams.get("filter");
   const search = searchParams.get("search");
   const page = parseInt(searchParams.get("page") || "1");
-  const limit = parseInt(searchParams.get("limit") || "50");
+
+  // Limit cap: 200 for normal pagination, 5000 for admin-driven full-export.
+  // Anyone trying to abuse this with limit=999999 gets clamped.
+  const rawLimit = parseInt(searchParams.get("limit") || "50");
+  const isFullExport = isAdmin(user) && rawLimit > 200 && rawLimit <= 5000;
+  const limit = !Number.isFinite(rawLimit) || rawLimit <= 0
+    ? 50
+    : isFullExport
+    ? rawLimit
+    : Math.min(rawLimit, 200);
 
   // Advanced filters
   const lokasyonId = searchParams.get("lokasyonId");

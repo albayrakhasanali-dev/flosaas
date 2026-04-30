@@ -1,10 +1,10 @@
 import { PrismaClient } from "@prisma/client";
 import * as XLSX from "xlsx";
-import { createHash } from "crypto";
+import bcrypt from "bcryptjs";
 import * as path from "path";
 
-function hashPassword(password: string): string {
-  return createHash("sha256").update(password).digest("hex");
+async function hashPassword(password: string): Promise<string> {
+  return bcrypt.hash(password, 12);
 }
 
 const prisma = new PrismaClient();
@@ -166,53 +166,68 @@ async function main() {
 
   console.log(`✅ T_Arac_Master seeded: ${imported} imported, ${skipped} skipped`);
 
-  // 8. Create default users
-  const hash = hashPassword("Admin123!");
+  // 8. Create default users — password MUST come from env to avoid checking
+  // a default credential into the public repo. Refuse to seed users without it.
+  const seedPassword = process.env.SEED_ADMIN_PASSWORD;
+  if (!seedPassword) {
+    console.warn(
+      "⚠️  SEED_ADMIN_PASSWORD not set — skipping default user creation. " +
+      "Run with SEED_ADMIN_PASSWORD=<strong-password> npm run db:seed to create the bootstrap admin."
+    );
+  } else {
+    const hash = await hashPassword(seedPassword);
 
-  await prisma.user.upsert({
-    where: { email: "admin@harmangroup.com" },
-    update: {},
-    create: {
-      email: "admin@harmangroup.com",
-      password: hash,
-      name: "Süper Admin",
-      role: "super_admin",
-    },
-  });
-
-  const sirket3s = await prisma.t_Sirket.findUnique({ where: { sirketAdi: "3S ÇEVRE" } });
-  if (sirket3s) {
     await prisma.user.upsert({
-      where: { email: "yonetici@3scevre.com" },
+      where: { email: "admin@harmangroup.com" },
       update: {},
       create: {
-        email: "yonetici@3scevre.com",
+        email: "admin@harmangroup.com",
         password: hash,
-        name: "3S Çevre Yöneticisi",
-        role: "sirket_yoneticisi",
-        sirketId: sirket3s.id,
+        name: "Süper Admin",
+        role: "admin",
       },
     });
-  }
 
-  const lokasyonEsenyurt = await prisma.t_Lokasyon.findUnique({
-    where: { lokasyonAdi: "ESENYURT - OTOPARK" },
-  });
-  if (lokasyonEsenyurt) {
-    await prisma.user.upsert({
-      where: { email: "sef@esenyurt.com" },
-      update: {},
-      create: {
-        email: "sef@esenyurt.com",
-        password: hash,
-        name: "Esenyurt Lokasyon Şefi",
-        role: "lokasyon_sefi",
-        lokasyonId: lokasyonEsenyurt.id,
-      },
+    const sirket3s = await prisma.t_Sirket.findUnique({ where: { sirketAdi: "3S ÇEVRE" } });
+    if (sirket3s) {
+      await prisma.user.upsert({
+        where: { email: "yonetici@3scevre.com" },
+        update: {},
+        create: {
+          email: "yonetici@3scevre.com",
+          password: hash,
+          name: "3S Çevre Yöneticisi",
+          role: "admin",
+          sirketId: sirket3s.id,
+        },
+      });
+    }
+
+    const lokasyonEsenyurt = await prisma.t_Lokasyon.findUnique({
+      where: { lokasyonAdi: "ESENYURT - OTOPARK" },
     });
+    if (lokasyonEsenyurt) {
+      const personel = await prisma.user.upsert({
+        where: { email: "sef@esenyurt.com" },
+        update: {},
+        create: {
+          email: "sef@esenyurt.com",
+          password: hash,
+          name: "Esenyurt Lokasyon Şefi",
+          role: "personel",
+        },
+      });
+      // wire up the new multi-location join table
+      await prisma.userLokasyon.upsert({
+        where: { userId_lokasyonId: { userId: personel.id, lokasyonId: lokasyonEsenyurt.id } },
+        update: {},
+        create: { userId: personel.id, lokasyonId: lokasyonEsenyurt.id },
+      });
+    }
+
+    console.log("✅ Default users created");
   }
 
-  console.log("✅ Default users created");
   console.log("🎉 Seeding complete!");
 }
 

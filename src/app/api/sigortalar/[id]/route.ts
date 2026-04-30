@@ -1,8 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { getCurrentUser, isAdmin } from "@/lib/rbac";
+import { getCurrentUser, isAdmin, buildWhereClause } from "@/lib/rbac";
 
-// GET - Get single sigorta detail
+function parseId(raw: string): number | null {
+  const n = Number(raw);
+  return Number.isInteger(n) && n > 0 ? n : null;
+}
+
+function parseDateOrNull(value: unknown): Date | null {
+  if (!value) return null;
+  const d = new Date(String(value));
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
+// GET - Get single sigorta detail (RBAC: must belong to an accessible vehicle)
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -11,8 +22,11 @@ export async function GET(
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { id } = await params;
-  const sigorta = await prisma.t_Sigorta.findUnique({
-    where: { id: parseInt(id) },
+  const parsedId = parseId(id);
+  if (parsedId === null) return NextResponse.json({ error: "Gecersiz ID" }, { status: 400 });
+
+  const sigorta = await prisma.t_Sigorta.findFirst({
+    where: { id: parsedId, arac: buildWhereClause(user) },
     include: {
       arac: {
         select: {
@@ -34,7 +48,7 @@ export async function GET(
   return NextResponse.json(sigorta);
 }
 
-// PUT - Update sigorta
+// PUT - Update sigorta (RBAC: must belong to an accessible vehicle)
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -43,11 +57,29 @@ export async function PUT(
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { id } = await params;
+  const parsedId = parseId(id);
+  if (parsedId === null) return NextResponse.json({ error: "Gecersiz ID" }, { status: 400 });
+
+  const existing = await prisma.t_Sigorta.findFirst({
+    where: { id: parsedId, arac: buildWhereClause(user) },
+    select: { id: true, aracId: true },
+  });
+  if (!existing) {
+    return NextResponse.json({ error: "Sigorta bulunamadi" }, { status: 404 });
+  }
+
   try {
     const body = await request.json();
 
+    if (body.baslangicTarihi && parseDateOrNull(body.baslangicTarihi) === null) {
+      return NextResponse.json({ error: "Gecersiz baslangicTarihi" }, { status: 400 });
+    }
+    if (body.bitisTarihi && parseDateOrNull(body.bitisTarihi) === null) {
+      return NextResponse.json({ error: "Gecersiz bitisTarihi" }, { status: 400 });
+    }
+
     const sigorta = await prisma.t_Sigorta.update({
-      where: { id: parseInt(id) },
+      where: { id: parsedId },
       data: {
         sigortaTuru: body.sigortaTuru,
         policeNo: body.policeNo || null,
@@ -103,7 +135,7 @@ export async function PUT(
   }
 }
 
-// DELETE - Delete sigorta
+// DELETE - Delete sigorta (admin only)
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -116,8 +148,11 @@ export async function DELETE(
   }
 
   const { id } = await params;
+  const parsedId = parseId(id);
+  if (parsedId === null) return NextResponse.json({ error: "Gecersiz ID" }, { status: 400 });
+
   try {
-    const deleted = await prisma.t_Sigorta.delete({ where: { id: parseInt(id) } });
+    const deleted = await prisma.t_Sigorta.delete({ where: { id: parsedId } });
 
     // Re-sync dates
     if (deleted.sigortaTuru === "trafik") {
