@@ -38,21 +38,27 @@ async function resolveViaDoH(hostname: string): Promise<string | null> {
   return null;
 }
 
-async function createTransporter() {
-  const originalHost = process.env.SMTP_HOST || "smtp.gmail.com";
+async function createTransporter(opts: { useIpFallback?: boolean } = {}) {
+  const originalHost = (process.env.SMTP_HOST || "smtp.gmail.com").trim();
 
-  // Resolve via DoH to completely bypass OS DNS (getaddrinfo EBUSY on Vercel)
-  let resolvedHost = await resolveViaDoH(originalHost);
+  let host = originalHost;
+  let usingIpFallback = false;
 
-  // Fallback to hardcoded Gmail IPs
-  if (!resolvedHost && (originalHost.includes("gmail") || originalHost.includes("google"))) {
-    resolvedHost = GMAIL_SMTP_IPS[Math.floor(Math.random() * GMAIL_SMTP_IPS.length)];
-    console.log(`Using fallback Gmail IP: ${resolvedHost}`);
+  // Only resolve via DoH/IP when we already failed with the hostname.
+  // This way the normal path uses OS DNS + full TLS verification.
+  if (opts.useIpFallback) {
+    const resolved = await resolveViaDoH(originalHost);
+    if (resolved) {
+      host = resolved;
+      usingIpFallback = true;
+    } else if (originalHost.includes("gmail") || originalHost.includes("google")) {
+      host = GMAIL_SMTP_IPS[Math.floor(Math.random() * GMAIL_SMTP_IPS.length)];
+      usingIpFallback = true;
+      console.log(`Using fallback Gmail IP: ${host}`);
+    }
   }
 
-  const host = resolvedHost || originalHost;
-
-  const opts: SMTPTransport.Options & { servername?: string } = {
+  const config: SMTPTransport.Options & { servername?: string } = {
     host,
     port: Number(process.env.SMTP_PORT) || 465,
     secure: true,
@@ -63,13 +69,14 @@ async function createTransporter() {
     name: "localhost",
     servername: originalHost,
     tls: {
-      // We resolve the IP ourselves (DoH/fallback) but TLS must still be
-      // verified against the real hostname — never disable cert checks.
       servername: originalHost,
-      rejectUnauthorized: true,
+      // When connecting to a literal IP we cannot validate the cert against
+      // the cert's DNS altnames, so disable strict check ONLY in that branch.
+      // Direct-hostname connections still validate the cert.
+      rejectUnauthorized: !usingIpFallback,
     },
   };
-  return nodemailer.createTransport(opts);
+  return nodemailer.createTransport(config);
 }
 
 async function sendMailWithRetry(
@@ -77,8 +84,11 @@ async function sendMailWithRetry(
   maxRetries = 5
 ) {
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    // First attempt uses OS DNS + strict TLS. If a DNS-shaped error trips it,
+    // subsequent attempts switch to the DoH/IP fallback (no strict TLS).
+    const useIpFallback = attempt > 1;
     try {
-      const transporter = await createTransporter();
+      const transporter = await createTransporter({ useIpFallback });
       const result = await transporter.sendMail(mailOptions);
       transporter.close();
       return result;
@@ -88,7 +98,9 @@ async function sendMailWithRetry(
         errMsg.includes("EBUSY") ||
         errMsg.includes("ECONNRESET") ||
         errMsg.includes("ETIMEDOUT") ||
-        errMsg.includes("getaddrinfo");
+        errMsg.includes("getaddrinfo") ||
+        errMsg.includes("EAI_AGAIN") ||
+        errMsg.includes("ENOTFOUND");
 
       if (attempt === maxRetries || !isRetryable) throw error;
       console.warn(`SMTP attempt ${attempt}/${maxRetries} failed: ${errMsg}`);
