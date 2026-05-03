@@ -102,16 +102,29 @@ async function handleExpiredVehicles() {
       sigortaKalanGun: computeSigortaKalanGun(a.sigortaBitisTarihi),
     }));
 
+    let emailDelivered: boolean | null = null;
     if (emailTargets.size > 0) {
-      await sendExpiredVehicleAlert(Array.from(emailTargets), alarmData);
+      try {
+        emailDelivered = await sendExpiredVehicleAlert(Array.from(emailTargets), alarmData);
+      } catch (mailErr) {
+        console.error("expired_vehicles email failed:", mailErr);
+        emailDelivered = false;
+      }
     }
 
-    // Log
+    // Log — distinguish "no recipients", "delivered", "delivery failed"
+    const deliveryNote =
+      emailDelivered === null
+        ? "no recipients"
+        : emailDelivered
+        ? `email sent to ${emailTargets.size} recipients`
+        : `email FAILED to ${emailTargets.size} recipients`;
+
     await prisma.cronLog.create({
       data: {
         jobName: "muayene_sigorta_kontrol",
-        status: "success",
-        message: `${expiredAraclar.length} expired vehicles notified (no status change)`,
+        status: emailDelivered === false ? "error" : "success",
+        message: `${expiredAraclar.length} expired vehicles found; ${deliveryNote}`,
         affectedCount: expiredAraclar.length,
       },
     });
@@ -155,9 +168,41 @@ async function handleWeeklyReport(force = false) {
     const currentDay = turkeyTime.getDay(); // 0=Sun, 1=Mon, ..., 6=Sat
     const results: string[] = [];
 
+    /**
+     * For a haftalik (weekly) module scheduled on day X, return the most recent
+     * occurrence of day X (today if today is X, otherwise the previous one).
+     * If sonGonderimTarihi is older than this anchor, we owe a report — even if
+     * Vercel cron skipped the actual scheduled day (Hobby plan is best-effort).
+     */
+    function lastScheduledOccurrence(scheduledDay: number, today: Date): Date {
+      const d = new Date(today);
+      d.setHours(0, 0, 0, 0);
+      const diff = (d.getDay() - scheduledDay + 7) % 7;
+      d.setDate(d.getDate() - diff);
+      return d;
+    }
+
     for (const ayar of mailAyarlari) {
-      // Check frequency: skip if weekly and wrong day (unless force=true)
-      if (!force && ayar.frekans === "haftalik" && currentDay !== ayar.haftaninGunu) {
+      let shouldSend = force || ayar.frekans === "gunluk";
+
+      if (!shouldSend && ayar.frekans === "haftalik") {
+        const anchor = lastScheduledOccurrence(ayar.haftaninGunu, turkeyTime);
+        const lastSent = ayar.sonGonderimTarihi;
+        if (currentDay === ayar.haftaninGunu) {
+          // It IS the scheduled day — send unless we already sent for this week's anchor.
+          shouldSend = !lastSent || lastSent < anchor;
+        } else if (!lastSent || lastSent < anchor) {
+          // Catch-up: scheduled day passed in this week-window and we missed it.
+          shouldSend = true;
+        }
+
+        if (!shouldSend) {
+          results.push(`${ayar.modulTipi}: skipped (already sent this week)`);
+          continue;
+        }
+      }
+
+      if (!shouldSend) {
         results.push(`${ayar.modulTipi}: skipped (not scheduled day)`);
         continue;
       }
