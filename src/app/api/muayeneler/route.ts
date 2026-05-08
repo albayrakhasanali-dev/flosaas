@@ -59,13 +59,15 @@ export async function GET(req: NextRequest) {
     });
   }
 
-  // Filter: only vehicles that require muayene AND are not pasif/yatan
+  // Filter: only vehicles that require muayene AND are still in the active fleet.
+  // Exclude pasif (YATAN/BAKIMDA) and archive states (SATILDI/TRAFİKTEN ÇEKME) —
+  // their inspection/insurance dates aren't actionable.
   const aracFilter = {
     ...rbacWhere,
     muayeneGerekli: true,
     durum: {
       ...((rbacWhere as Record<string, unknown>).durum as object || {}),
-      durumAdi: { notIn: ["⚫ YATAN", "🟡 BAKIMDA"] },
+      durumAdi: { notIn: ["⚫ YATAN", "🟡 BAKIMDA", "🟣 SATILDI", "🟠 TRAFİKTEN ÇEKME"] },
     },
   };
 

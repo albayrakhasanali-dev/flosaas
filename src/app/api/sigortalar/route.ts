@@ -64,13 +64,15 @@ export async function GET(req: NextRequest) {
     });
   }
 
-  // Filter: only vehicles that require sigorta AND are not pasif/yatan
+  // Filter: only vehicles that require sigorta AND are still in the active fleet.
+  // Exclude pasif (YATAN/BAKIMDA) and archive states (SATILDI/TRAFİKTEN ÇEKME) —
+  // they don't need new policies.
   const aracFilter = {
     ...rbacWhere,
     sigortaGerekli: true,
     durum: {
       ...((rbacWhere as Record<string, unknown>).durum as object || {}),
-      durumAdi: { notIn: ["⚫ YATAN", "🟡 BAKIMDA"] },
+      durumAdi: { notIn: ["⚫ YATAN", "🟡 BAKIMDA", "🟣 SATILDI", "🟠 TRAFİKTEN ÇEKME"] },
     },
   };
 
