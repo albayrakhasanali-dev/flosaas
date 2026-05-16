@@ -82,7 +82,7 @@ export default function DashboardClient() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-slate-800">Yonetim Kokpiti</h1>
+        <h1 className="text-xl sm:text-2xl font-bold text-slate-800">Yonetim Kokpiti</h1>
         <p className="text-sm text-slate-500 mt-1">
           Filo durumu ve acil aksiyonlara genel bakis
         </p>

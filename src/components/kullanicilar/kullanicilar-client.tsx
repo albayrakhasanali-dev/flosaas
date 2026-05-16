@@ -110,19 +110,20 @@ export default function KullanicilarClient() {
   return (
     <div className="space-y-4">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800">Kullanici Yonetimi</h1>
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-800">Kullanici Yonetimi</h1>
           <p className="text-sm text-slate-500 mt-1">
             {data ? `${data.pagination.total} kullanici kaydi` : "Yukleniyor..."}
           </p>
         </div>
         <button
           onClick={() => router.push("/kullanici/new")}
-          className="flex items-center gap-2 bg-violet-600 hover:bg-violet-700 text-white px-4 py-2.5 rounded-lg text-sm font-medium transition-colors"
+          className="flex items-center gap-2 bg-violet-600 hover:bg-violet-700 text-white px-3 sm:px-4 py-2.5 rounded-lg text-sm font-medium transition-colors self-start sm:self-auto"
         >
           <Plus size={16} />
-          Yeni Kullanici Ekle
+          <span className="hidden sm:inline">Yeni Kullanici Ekle</span>
+          <span className="sm:hidden">Yeni Kullanici</span>
         </button>
       </div>
 

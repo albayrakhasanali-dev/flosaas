@@ -16,7 +16,7 @@ export default async function AracDetailPage({
   return (
     <div className="flex min-h-screen">
       <Sidebar />
-      <main className="ml-64 flex-1 p-6">
+      <main className="md:ml-64 flex-1 p-4 md:p-6 pt-[72px] md:pt-6">
         <AracFormClient aracId={id} />
       </main>
     </div>

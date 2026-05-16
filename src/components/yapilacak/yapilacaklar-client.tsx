@@ -132,19 +132,20 @@ export default function YapilacaklarClient() {
   return (
     <div className="space-y-4">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800">Yapilacaklar</h1>
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-800">Yapilacaklar</h1>
           <p className="text-sm text-slate-500 mt-1">
             {data ? `${data.pagination.total} gorev kaydi` : "Yukleniyor..."}
           </p>
         </div>
         <button
           onClick={() => router.push("/yapilacak/new")}
-          className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2.5 rounded-lg text-sm font-medium transition-colors"
+          className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-3 sm:px-4 py-2.5 rounded-lg text-sm font-medium transition-colors self-start sm:self-auto"
         >
           <Plus size={16} />
-          Yeni Gorev Ekle
+          <span className="hidden sm:inline">Yeni Gorev Ekle</span>
+          <span className="sm:hidden">Yeni Gorev</span>
         </button>
       </div>
 
@@ -199,8 +200,8 @@ export default function YapilacaklarClient() {
       )}
 
       {/* Search + Filter */}
-      <div className="flex items-center gap-3">
-        <div className="relative flex-1 max-w-md">
+      <div className="flex items-center gap-2 sm:gap-3">
+        <div className="relative flex-1 sm:max-w-md">
           <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
             type="text"
@@ -212,14 +213,14 @@ export default function YapilacaklarClient() {
         </div>
         <button
           onClick={() => setShowFilters(!showFilters)}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium border transition-colors ${
+          className={`flex items-center gap-2 px-3 sm:px-4 py-2.5 rounded-lg text-sm font-medium border transition-colors ${
             showFilters || activeFilterCount > 0
               ? "bg-indigo-50 border-indigo-300 text-indigo-700"
               : "bg-white border-slate-300 text-slate-600 hover:bg-slate-50"
           }`}
         >
           <Filter size={16} />
-          Filtreler
+          <span className="hidden sm:inline">Filtreler</span>
           {activeFilterCount > 0 && (
             <span className="bg-indigo-600 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
               {activeFilterCount}
@@ -232,7 +233,7 @@ export default function YapilacaklarClient() {
             className="flex items-center gap-1 px-3 py-2.5 rounded-lg text-sm text-red-600 hover:bg-red-50 border border-red-200 transition-colors"
           >
             <X size={14} />
-            Temizle
+            <span className="hidden sm:inline">Temizle</span>
           </button>
         )}
       </div>

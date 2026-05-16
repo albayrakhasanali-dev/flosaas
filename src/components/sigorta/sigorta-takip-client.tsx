@@ -183,9 +183,9 @@ export default function SigortaTakipClient() {
   return (
     <div className="space-y-4">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800">Sigorta Takip</h1>
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-800">Sigorta Takip</h1>
           <p className="text-sm text-slate-500 mt-1">
             {data ? `${data.pagination.total} police kaydi` : "Yukleniyor..."}
           </p>
@@ -195,18 +195,20 @@ export default function SigortaTakipClient() {
             <button
               onClick={handleExport}
               disabled={exporting || !data?.data.length}
-              className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white px-4 py-2.5 rounded-lg text-sm font-medium transition-colors"
+              className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white px-3 sm:px-4 py-2.5 rounded-lg text-sm font-medium transition-colors"
             >
               <Download size={16} />
-              {exporting ? "Indiriliyor..." : "Excel Indir"}
+              <span className="hidden sm:inline">{exporting ? "Indiriliyor..." : "Excel Indir"}</span>
+              <span className="sm:hidden">{exporting ? "..." : "Excel"}</span>
             </button>
           )}
           <button
             onClick={() => router.push("/sigorta/new")}
-            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-lg text-sm font-medium transition-colors"
+            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-3 sm:px-4 py-2.5 rounded-lg text-sm font-medium transition-colors"
           >
             <Plus size={16} />
-            Yeni Police Ekle
+            <span className="hidden sm:inline">Yeni Police Ekle</span>
+            <span className="sm:hidden">Yeni</span>
           </button>
         </div>
       </div>
@@ -296,8 +298,8 @@ export default function SigortaTakipClient() {
       )}
 
       {/* Search + Filter */}
-      <div className="flex items-center gap-3">
-        <div className="relative flex-1 max-w-md">
+      <div className="flex items-center gap-2 sm:gap-3">
+        <div className="relative flex-1 sm:max-w-md">
           <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
             type="text"
@@ -309,14 +311,14 @@ export default function SigortaTakipClient() {
         </div>
         <button
           onClick={() => setShowFilters(!showFilters)}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium border transition-colors ${
+          className={`flex items-center gap-2 px-3 sm:px-4 py-2.5 rounded-lg text-sm font-medium border transition-colors ${
             showFilters || activeFilterCount > 0
               ? "bg-blue-50 border-blue-300 text-blue-700"
               : "bg-white border-slate-300 text-slate-600 hover:bg-slate-50"
           }`}
         >
           <Filter size={16} />
-          Filtreler
+          <span className="hidden sm:inline">Filtreler</span>
           {activeFilterCount > 0 && (
             <span className="bg-blue-600 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
               {activeFilterCount}
@@ -329,7 +331,7 @@ export default function SigortaTakipClient() {
             className="flex items-center gap-1 px-3 py-2.5 rounded-lg text-sm text-red-600 hover:bg-red-50 border border-red-200 transition-colors"
           >
             <X size={14} />
-            Temizle
+            <span className="hidden sm:inline">Temizle</span>
           </button>
         )}
       </div>

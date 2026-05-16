@@ -234,9 +234,9 @@ export default function FiloClient() {
   return (
     <div className="space-y-4">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800">
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-800">
             {filterLabels[filter] || "Filo"}
           </h1>
           <p className="text-sm text-slate-500 mt-1">
@@ -248,27 +248,29 @@ export default function FiloClient() {
             <button
               onClick={handleExport}
               disabled={exporting || !data?.data.length}
-              className="flex items-center gap-2 px-4 py-2.5 border border-slate-300 text-slate-600 hover:bg-slate-50 rounded-lg text-sm font-medium transition-colors disabled:opacity-40"
+              className="flex items-center gap-2 px-3 sm:px-4 py-2.5 border border-slate-300 text-slate-600 hover:bg-slate-50 rounded-lg text-sm font-medium transition-colors disabled:opacity-40"
             >
               <FileDown size={16} />
-              {exporting ? "Hazirlaniyor..." : "Excel Indir"}
+              <span className="hidden sm:inline">{exporting ? "Hazirlaniyor..." : "Excel Indir"}</span>
+              <span className="sm:hidden">{exporting ? "..." : "Excel"}</span>
             </button>
           )}
           {isAdminRole && (
             <button
               onClick={() => router.push("/arac/new")}
-              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-lg text-sm font-medium transition-colors"
+              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-3 sm:px-4 py-2.5 rounded-lg text-sm font-medium transition-colors"
             >
               <Plus size={16} />
-              Yeni Arac
+              <span className="hidden sm:inline">Yeni Arac</span>
+              <span className="sm:hidden">Yeni</span>
             </button>
           )}
         </div>
       </div>
 
       {/* Search + Filter Toggle */}
-      <div className="flex items-center gap-3">
-        <div className="relative flex-1 max-w-md">
+      <div className="flex items-center gap-2 sm:gap-3">
+        <div className="relative flex-1 sm:max-w-md">
           <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
             type="text"
@@ -280,14 +282,14 @@ export default function FiloClient() {
         </div>
         <button
           onClick={() => setShowFilters(!showFilters)}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium border transition-colors ${
+          className={`flex items-center gap-2 px-3 sm:px-4 py-2.5 rounded-lg text-sm font-medium border transition-colors ${
             showFilters || activeFilterCount > 0
               ? "bg-blue-50 border-blue-300 text-blue-700"
               : "bg-white border-slate-300 text-slate-600 hover:bg-slate-50"
           }`}
         >
           <Filter size={16} />
-          Filtreler
+          <span className="hidden sm:inline">Filtreler</span>
           {activeFilterCount > 0 && (
             <span className="bg-blue-600 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
               {activeFilterCount}
@@ -300,7 +302,7 @@ export default function FiloClient() {
             className="flex items-center gap-1 px-3 py-2.5 rounded-lg text-sm text-red-600 hover:bg-red-50 border border-red-200 transition-colors"
           >
             <X size={14} />
-            Temizle
+            <span className="hidden sm:inline">Temizle</span>
           </button>
         )}
       </div>
@@ -595,8 +597,8 @@ export default function FiloClient() {
 
       {/* Sell Dialog */}
       {sellDialog.open && sellDialog.arac && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl p-6 w-full max-w-md shadow-xl">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl p-5 sm:p-6 w-full max-w-md shadow-xl">
             <h3 className="text-lg font-bold text-slate-800 mb-1">Arac Satisi</h3>
             <p className="text-sm text-slate-500 mb-4">
               <span className="font-semibold text-purple-600">{sellDialog.arac.plaka}</span> plakali araci satildi olarak isaretleyeceksiniz.
@@ -646,8 +648,8 @@ export default function FiloClient() {
 
       {/* Undo Sell Dialog */}
       {undoDialog.open && undoDialog.arac && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl p-6 w-full max-w-md shadow-xl">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl p-5 sm:p-6 w-full max-w-md shadow-xl">
             <h3 className="text-lg font-bold text-slate-800 mb-1">Satisi Geri Al</h3>
             <p className="text-sm text-slate-500 mb-4">
               <span className="font-semibold text-green-600">{undoDialog.arac.plaka}</span> plakali aracin satisi geri alinacak ve durum <span className="font-semibold text-green-600">AKTİF</span> olarak degistirilecek.
