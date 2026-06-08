@@ -7,6 +7,43 @@ import type { WeeklyReportData, YapilacakReportData } from "@/lib/email";
 // Cron secret for security — must be set in environment
 const CRON_SECRET = process.env.CRON_SECRET;
 
+/**
+ * Neon (serverless Postgres) auto-suspends its compute after a few minutes
+ * of inactivity. At 05:00 UTC the DB has been idle all night, so the cron's
+ * first query can hit a cold start and fail with "Can't reach database server".
+ * This warmup pings the DB with retries so the compute wakes up BEFORE the
+ * real queries run. Returns true if the DB became reachable.
+ */
+async function ensureDbReady(maxAttempts = 6): Promise<boolean> {
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      await prisma.$queryRaw`SELECT 1`;
+      return true;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.warn(`DB warmup attempt ${attempt}/${maxAttempts} failed: ${msg}`);
+      if (attempt === maxAttempts) return false;
+      // Backoff: 1s, 2s, 3s, ... gives Neon time to finish cold start
+      await new Promise((r) => setTimeout(r, attempt * 1000));
+    }
+  }
+  return false;
+}
+
+// Best-effort cron log that never throws (the DB may still be flaky).
+async function safeCronLog(data: {
+  jobName: string;
+  status: string;
+  message: string;
+  affectedCount?: number;
+}) {
+  try {
+    await prisma.cronLog.create({ data });
+  } catch (err) {
+    console.error("cronLog write failed:", err instanceof Error ? err.message : err);
+  }
+}
+
 // Vercel cron uses GET requests; Vercel automatically attaches
 // `Authorization: Bearer ${CRON_SECRET}` if CRON_SECRET env var is set.
 export async function GET(req: NextRequest) {
@@ -19,6 +56,18 @@ export async function GET(req: NextRequest) {
 
   const job = searchParams.get("job") || "expired_vehicles";
   const force = searchParams.get("force") === "true";
+
+  // Wake the database before doing any work, so Neon cold starts don't
+  // silently kill the run (the root cause of intermittent missing mails).
+  const dbReady = await ensureDbReady();
+  if (!dbReady) {
+    await safeCronLog({
+      jobName: job,
+      status: "error",
+      message: "Database unreachable after warmup retries (Neon cold start?)",
+    });
+    return NextResponse.json({ error: "Database unreachable" }, { status: 503 });
+  }
 
   // "all" runs both jobs — safer: one cron triggers everything
   if (job === "all") {
@@ -135,12 +184,10 @@ async function handleExpiredVehicles() {
       vehicles: alarmData,
     });
   } catch (error) {
-    await prisma.cronLog.create({
-      data: {
-        jobName: "muayene_sigorta_kontrol",
-        status: "error",
-        message: String(error),
-      },
+    await safeCronLog({
+      jobName: "muayene_sigorta_kontrol",
+      status: "error",
+      message: String(error),
     });
     return NextResponse.json({ error: String(error) }, { status: 500 });
   }
@@ -382,9 +429,7 @@ async function handleWeeklyReport(force = false) {
 
     return NextResponse.json({ message: "Report processed", results });
   } catch (error) {
-    await prisma.cronLog.create({
-      data: { jobName: "weekly_report", status: "error", message: String(error) },
-    });
+    await safeCronLog({ jobName: "weekly_report", status: "error", message: String(error) });
     return NextResponse.json({ error: String(error) }, { status: 500 });
   }
 }
