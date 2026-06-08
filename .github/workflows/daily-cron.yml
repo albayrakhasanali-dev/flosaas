@@ -1,0 +1,42 @@
+name: Gunluk Mail Cron (FloSaaS yedek tetikleyici)
+
+# Vercel cron'u zaman zaman gun atliyor (16 May ve 7-8 Haz'da durdu).
+# Bu workflow ikinci/yedek bir tetikleyici: her gun 05:00 UTC (08:00 TR)
+# /api/cron?job=all endpoint'ini cagirir. Endpoint icindeki "bu hafta
+# gonderildi" + DB-warmup mantigi sayesinde Vercel ile ayni anda calissa
+# bile cift mail gitmez ve DB soguk-baslatmasi sorun olmaz.
+
+on:
+  schedule:
+    - cron: "0 5 * * *"
+  workflow_dispatch: {} # Actions sekmesinden elle de tetiklenebilir
+
+# Ayni anda iki calisma birikmesin
+concurrency:
+  group: daily-cron
+  cancel-in-progress: false
+
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    steps:
+      - name: FloSaaS cron endpoint'ini tetikle
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$CRON_SECRET" ]; then
+            echo "::error::CRON_SECRET GitHub secret tanimli degil (Settings > Secrets > Actions)."
+            exit 1
+          fi
+          echo "Endpoint cagriliyor: job=all"
+          HTTP_CODE=$(curl -sS -o /tmp/resp.json -w "%{http_code}" \
+            --max-time 150 --retry 2 --retry-delay 10 \
+            -H "Authorization: Bearer ${CRON_SECRET}" \
+            "https://flosaas.vercel.app/api/cron?job=all")
+          echo "HTTP: $HTTP_CODE"
+          echo "Yanit:"; cat /tmp/resp.json || true; echo ""
+          if [ "$HTTP_CODE" != "200" ]; then
+            echo "::error::Endpoint $HTTP_CODE dondu (200 bekleniyordu)."
+            exit 1
+          fi
+          echo "::notice::Cron basariyla tetiklendi."
