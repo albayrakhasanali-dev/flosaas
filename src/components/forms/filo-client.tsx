@@ -14,6 +14,7 @@ interface Arac {
   lokasyon: { lokasyonAdi: string } | null;
   mulkiyetTipi: string | null;
   markaModelTicariAdi: string | null;
+  modelYili: number | null;
   kullanimSekli: string | null;
   uttsDurum: string | null;
   muayeneAlarm: string;
@@ -203,6 +204,7 @@ export default function FiloClient() {
         lokasyon: a.lokasyon?.lokasyonAdi || "",
         mulkiyetTipi: a.mulkiyetTipi || "",
         markaModel: a.markaModelTicariAdi || "",
+        modelYili: a.modelYili ?? "",
         kullanimSekli: a.kullanimSekli || "",
         uttsDurum: a.uttsDurum || "",
         muayene: a.muayeneKalanGun !== null
@@ -220,6 +222,7 @@ export default function FiloClient() {
         { header: "Lokasyon", key: "lokasyon", width: 25 },
         { header: "Mulkiyet", key: "mulkiyetTipi", width: 12 },
         { header: "Marka/Model", key: "markaModel", width: 25 },
+        { header: "Model Yili", key: "modelYili", width: 10 },
         { header: "Kullanim Sekli", key: "kullanimSekli", width: 16 },
         { header: "UTTS Durum", key: "uttsDurum", width: 12 },
         { header: "Muayene", key: "muayene", width: 18 },
